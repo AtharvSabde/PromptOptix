@@ -1,0 +1,67 @@
+# PromptOptimizer Pro - Python Dependencies
+
+# ===== Web Framework =====
+fastapi
+uvicorn[standard]
+python-dotenv
+
+# ===== LLM APIs =====
+anthropic
+groq
+openai  # For tiktoken
+
+# ===== Token Counting =====
+tiktoken
+
+# ===== Data Validation =====
+pydantic
+pydantic-settings
+
+# ===== HTTP Requests =====
+requests
+httpx
+
+# ===== NLP & Evaluation (Optional) =====
+# sentence-transformers  # For BERTScore (heavy dependency)
+# bert-score
+nltk
+rouge-score
+
+# ===== Data Processing =====
+numpy
+pandas
+
+# ===== Testing =====
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+
+# ===== Logging & Monitoring =====
+python-json-logger
+colorlog
+
+# ===== Async Support =====
+asyncio
+aiohttp
+
+# ===== Utilities =====
+python-dateutil
+pytz
+
+# ===== Type Checking (Development) =====
+mypy
+types-requests
+
+# ===== Code Quality (Development) =====
+black
+flake8
+isort
+
+# ===== Future Database Support =====
+# SQLAlchemy
+# alembic
+
+# ===== Future Caching =====
+# redis
+# hiredis
