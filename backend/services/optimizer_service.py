@@ -26,7 +26,11 @@ from ..utils import (
 from ..config import Config
 from .agent_orchestrator import get_orchestrator
 from .llm_service import get_llm_service
-from ..prompts.optimization_prompts import get_optimization_prompt
+from ..prompts.optimization_prompts import (
+    get_optimization_prompt,
+    get_shdt_optimization_prompt,
+    get_cdraf_critique_refinement_prompt
+)
 
 logger = get_logger(__name__)
 
@@ -55,7 +59,8 @@ class OptimizerService:
         context: Optional[Dict[str, Any]] = None,
         optimization_level: str = "balanced",
         max_techniques: int = 5,
-        analysis: Optional[Dict[str, Any]] = None
+        analysis: Optional[Dict[str, Any]] = None,
+        user_issues: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Optimize a prompt by applying techniques to fix defects
@@ -66,6 +71,7 @@ class OptimizerService:
             optimization_level: "minimal", "balanced", or "aggressive"
             max_techniques: Maximum number of techniques to apply
             analysis: Pre-computed analysis results (optional, will analyze if not provided)
+            user_issues: User-reported issues to prioritize during optimization
 
         Returns:
             {
@@ -180,7 +186,8 @@ class OptimizerService:
                 original_prompt=prompt,
                 defects=defects,
                 techniques=technique_dicts,
-                context=context
+                context=context,
+                user_issues=user_issues
             )
 
             self.logger.info(
@@ -188,12 +195,14 @@ class OptimizerService:
             )
 
             # Call LLM for intelligent rewriting
+            provider = context.get("provider") if context else None
             llm_result = await asyncio.to_thread(
                 self.llm_service.call,
                 prompt=optimization_meta_prompt,
                 system_prompt="You are a prompt rewriting specialist. Rewrite prompts to be clearer and more effective. Return only valid JSON.",
                 temperature=0.4,
-                max_tokens=4096
+                max_tokens=4096,
+                provider=provider
             )
 
             # Parse and validate the LLM response
@@ -709,6 +718,694 @@ class OptimizerService:
                 "target_score": target_score,
                 "min_improvement": min_improvement,
                 "user_issues_provided": bool(user_issues)
+            }
+        }
+
+    # ============================================================
+    # SHDT - Scored History with Defect Trajectories
+    # ============================================================
+
+    async def optimize_with_trajectory(
+        self,
+        prompt: str,
+        context: Optional[Dict[str, Any]] = None,
+        analysis: Optional[Dict[str, Any]] = None,
+        max_iterations: int = 4,
+        target_score: float = 8.0,
+        min_improvement: float = 0.3
+    ) -> Dict[str, Any]:
+        """
+        SHDT: Optimize using scored history with defect trajectories.
+
+        Unlike standard iterative optimization, SHDT passes the FULL trajectory
+        of previous attempts (with scores AND defect changes) to the LLM.
+        This gives the LLM causal understanding of what changes improved scores.
+
+        Args:
+            prompt: Original prompt to optimize
+            context: Task type, domain context
+            analysis: Pre-computed analysis (optional)
+            max_iterations: Maximum optimization iterations
+            target_score: Stop when reached
+            min_improvement: Minimum improvement to continue
+
+        Returns:
+            Result with trajectory history and final optimized prompt
+        """
+        if context is None:
+            context = {}
+
+        self.logger.info("Starting SHDT optimization with defect trajectories")
+
+        # Step 1: Initial analysis
+        if analysis is None:
+            analysis = await self.orchestrator.analyze_with_agents(prompt, context)
+
+        # Build initial trajectory entry
+        initial_defect_ids = [d["id"] for d in analysis.get("defects", [])]
+        trajectory = [{
+            "version": 0,
+            "prompt": prompt,
+            "score": analysis["overall_score"],
+            "defects_fixed": [],
+            "defects_remaining": initial_defect_ids,
+            "defects_introduced": [],
+            "improvement": 0.0
+        }]
+
+        current_prompt = prompt
+        current_defects = analysis.get("defects", [])
+        current_score = analysis["overall_score"]
+        best_prompt = prompt
+        best_score = current_score
+
+        for iteration in range(1, max_iterations + 1):
+            self.logger.info(
+                f"SHDT iteration {iteration}: score={current_score:.1f}, "
+                f"defects={len(current_defects)}"
+            )
+
+            # Check stopping conditions
+            if current_score >= target_score:
+                self.logger.info(f"SHDT: Target score {target_score} reached")
+                break
+
+            if not current_defects:
+                self.logger.info("SHDT: No remaining defects")
+                break
+
+            # Build SHDT prompt with full trajectory
+            remaining_defects = [
+                d for d in current_defects if d.get("confidence", 0) > 0.3
+            ]
+
+            shdt_prompt = get_shdt_optimization_prompt(
+                original_prompt=prompt,
+                trajectory=trajectory,
+                remaining_defects=remaining_defects,
+                context=context
+            )
+
+            # Call LLM with trajectory context
+            provider = context.get("provider") if context else None
+            try:
+                llm_result = await asyncio.to_thread(
+                    self.llm_service.call,
+                    prompt=shdt_prompt,
+                    system_prompt="You are a prompt optimization specialist. Study the optimization history to understand what changes helped. Return only valid JSON.",
+                    temperature=0.4,
+                    max_tokens=4096,
+                    provider=provider
+                )
+
+                parsed = parse_json_response(
+                    llm_result["response"],
+                    required_fields=["optimized_prompt"]
+                )
+                new_prompt = parsed["optimized_prompt"]
+
+                # Validate output
+                placeholder_pattern = r'\[(?:TASK|SLOT|NAME|INPUT|ROLE|DOMAIN|METHOD|STEP|ACTION|APPROACH|PROBLEM|TOPIC)[^\]]*\]'
+                if re.search(placeholder_pattern, new_prompt, re.IGNORECASE):
+                    self.logger.warning("SHDT: LLM returned template, skipping iteration")
+                    continue
+                if len(new_prompt) < len(current_prompt) * 0.4:
+                    self.logger.warning("SHDT: Output too short, skipping iteration")
+                    continue
+
+            except Exception as e:
+                self.logger.warning(f"SHDT iteration {iteration} failed: {e}")
+                continue
+
+            # Re-analyze
+            new_analysis = await self.orchestrator.analyze_with_agents(new_prompt, context)
+            new_score = new_analysis["overall_score"]
+            new_defect_ids = [d["id"] for d in new_analysis.get("defects", [])]
+            prev_defect_ids = [d["id"] for d in current_defects]
+
+            # Calculate defect changes
+            defects_fixed = [d for d in prev_defect_ids if d not in new_defect_ids]
+            defects_introduced = [d for d in new_defect_ids if d not in prev_defect_ids]
+            improvement = new_score - current_score
+
+            # Record trajectory entry
+            trajectory.append({
+                "version": iteration,
+                "prompt": new_prompt,
+                "score": new_score,
+                "defects_fixed": defects_fixed,
+                "defects_remaining": new_defect_ids,
+                "defects_introduced": defects_introduced,
+                "improvement": round(improvement, 2)
+            })
+
+            self.logger.info(
+                f"SHDT v{iteration}: {current_score:.1f} -> {new_score:.1f} "
+                f"(+{improvement:.1f}), fixed={defects_fixed}"
+            )
+
+            # Update best
+            if new_score > best_score:
+                best_prompt = new_prompt
+                best_score = new_score
+
+            # Check minimum improvement (after first iteration)
+            if iteration > 1 and improvement < min_improvement:
+                if improvement < 0:
+                    self.logger.info("SHDT: Score decreased, reverting to best")
+                else:
+                    self.logger.info(f"SHDT: Improvement {improvement:.2f} below threshold")
+                break
+
+            current_prompt = new_prompt
+            current_defects = new_analysis.get("defects", [])
+            current_score = new_score
+
+        # Final analysis of best prompt
+        final_analysis = await self.orchestrator.analyze_with_agents(best_prompt, context)
+
+        return {
+            "original_prompt": prompt,
+            "final_prompt": best_prompt,
+            "strategy": "shdt",
+            "original_score": trajectory[0]["score"],
+            "final_score": best_score,
+            "total_improvement": round(best_score - trajectory[0]["score"], 2),
+            "trajectory": trajectory,
+            "total_iterations": len(trajectory) - 1,
+            "defects_before": analysis.get("defects", []),
+            "defects_after": final_analysis.get("defects", []),
+            "before_analysis": analysis,
+            "after_analysis": final_analysis,
+            "metadata": {
+                "strategy": "shdt",
+                "max_iterations": max_iterations,
+                "target_score": target_score,
+                "versions_generated": len(trajectory)
+            }
+        }
+
+    # ============================================================
+    # CDRAF - Critic-Driven Refinement with Agent Feedback
+    # ============================================================
+
+    async def refine_with_agents(
+        self,
+        optimized_prompt: str,
+        context: Optional[Dict[str, Any]] = None,
+        max_rounds: int = 2
+    ) -> Dict[str, Any]:
+        """
+        CDRAF: Use 4 specialized agents as critics for directed refinement.
+
+        After initial optimization, runs all 4 agents on the optimized prompt.
+        Each agent provides specific feedback in their domain. The feedback is
+        prioritized and sent to the LLM for targeted fixes.
+
+        Args:
+            optimized_prompt: The prompt to refine (already optimized once)
+            context: Task type, domain context
+            max_rounds: Maximum critique-refine rounds
+
+        Returns:
+            Result with critique rounds history and refined prompt
+        """
+        if context is None:
+            context = {}
+
+        self.logger.info("Starting CDRAF multi-agent critique refinement")
+
+        current_prompt = optimized_prompt
+        critique_rounds = []
+
+        for round_num in range(1, max_rounds + 1):
+            # Step 1: Run all 4 agents as critics
+            critique_analysis = await self.orchestrator.analyze_with_agents(
+                current_prompt, context
+            )
+
+            current_score = critique_analysis["overall_score"]
+            current_defects = critique_analysis.get("defects", [])
+
+            # If no defects, we're done
+            if not current_defects:
+                self.logger.info(f"CDRAF round {round_num}: No defects found, refinement complete")
+                critique_rounds.append({
+                    "round": round_num,
+                    "score": current_score,
+                    "agent_feedback": [],
+                    "issues_found": 0,
+                    "issues_fixed": 0,
+                    "prompt_after": current_prompt
+                })
+                break
+
+            # Step 2: Collect agent-specific feedback
+            agent_feedback = []
+            agent_results_raw = critique_analysis.get("agent_results", {})
+            # agent_results is a dict keyed by agent name; iterate over values
+            if isinstance(agent_results_raw, dict):
+                agent_results = list(agent_results_raw.values())
+            elif isinstance(agent_results_raw, list):
+                agent_results = agent_results_raw
+            else:
+                agent_results = []
+
+            for agent_result in agent_results:
+                agent_name = agent_result.get("agent", "Unknown")
+                focus_area = agent_result.get("focus_area", "")
+                agent_defects = agent_result.get("defects", [])
+
+                issues = []
+                for defect in agent_defects:
+                    issues.append({
+                        "defect_id": defect.get("id", ""),
+                        "name": defect.get("name", "Unknown"),
+                        "description": defect.get("description", ""),
+                        "remediation": defect.get("remediation", ""),
+                        "confidence": defect.get("confidence", 0.5),
+                        "severity": defect.get("severity", "medium")
+                    })
+
+                agent_feedback.append({
+                    "agent": agent_name,
+                    "focus_area": focus_area,
+                    "issues": issues
+                })
+
+            # Sort feedback by confidence * severity priority
+            total_issues = sum(len(f["issues"]) for f in agent_feedback)
+
+            if total_issues == 0:
+                self.logger.info(f"CDRAF round {round_num}: No agent issues, done")
+                break
+
+            self.logger.info(
+                f"CDRAF round {round_num}: {total_issues} issues from "
+                f"{len([f for f in agent_feedback if f['issues']])} agents"
+            )
+
+            # Step 3: Generate CDRAF refinement prompt
+            cdraf_prompt = get_cdraf_critique_refinement_prompt(
+                optimized_prompt=current_prompt,
+                agent_feedback=agent_feedback,
+                context=context
+            )
+
+            # Step 4: Call LLM for directed refinement
+            provider = context.get("provider") if context else None
+            try:
+                llm_result = await asyncio.to_thread(
+                    self.llm_service.call,
+                    prompt=cdraf_prompt,
+                    system_prompt="You are a prompt refinement specialist. Address each piece of agent feedback precisely. Return only valid JSON.",
+                    temperature=0.3,
+                    max_tokens=4096,
+                    provider=provider
+                )
+
+                parsed = parse_json_response(
+                    llm_result["response"],
+                    required_fields=["refined_prompt"],
+                    default={"refined_prompt": current_prompt, "issues_addressed": []}
+                )
+
+                # Defensive: ensure parsed is a dict
+                if not isinstance(parsed, dict):
+                    self.logger.warning(f"CDRAF: parse returned {type(parsed).__name__}, using current prompt")
+                    refined_prompt = current_prompt
+                    issues_addressed = []
+                else:
+                    refined_prompt = parsed.get("refined_prompt", current_prompt)
+
+                    # Validate
+                    placeholder_pattern = r'\[(?:TASK|SLOT|NAME|INPUT|ROLE|DOMAIN|METHOD|STEP|ACTION|APPROACH|PROBLEM|TOPIC)[^\]]*\]'
+                    if re.search(placeholder_pattern, refined_prompt, re.IGNORECASE):
+                        self.logger.warning("CDRAF: LLM returned template, keeping current")
+                        refined_prompt = current_prompt
+                    elif len(refined_prompt) < len(current_prompt) * 0.4:
+                        self.logger.warning("CDRAF: Output too short, keeping current")
+                        refined_prompt = current_prompt
+
+                    issues_addressed = parsed.get("issues_addressed", [])
+
+            except Exception as e:
+                self.logger.warning(f"CDRAF round {round_num} failed: {e}")
+                refined_prompt = current_prompt
+                issues_addressed = []
+
+            # Record this critique round
+            critique_rounds.append({
+                "round": round_num,
+                "score_before": current_score,
+                "agent_feedback": agent_feedback,
+                "issues_found": total_issues,
+                "issues_addressed": issues_addressed,
+                "prompt_before": current_prompt,
+                "prompt_after": refined_prompt
+            })
+
+            current_prompt = refined_prompt
+
+        # Final analysis
+        final_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+
+        return {
+            "original_prompt": optimized_prompt,
+            "refined_prompt": current_prompt,
+            "strategy": "cdraf",
+            "critique_rounds": critique_rounds,
+            "total_rounds": len(critique_rounds),
+            "final_score": final_analysis["overall_score"],
+            "defects_after": final_analysis.get("defects", []),
+            "after_analysis": final_analysis,
+            "metadata": {
+                "strategy": "cdraf",
+                "max_rounds": max_rounds,
+                "total_issues_found": sum(r.get("issues_found", 0) for r in critique_rounds)
+            }
+        }
+
+    # ============================================================
+    # Unified Pipeline - Combines Standard + DGEO + SHDT + CDRAF
+    # ============================================================
+
+    async def optimize_unified(
+        self,
+        prompt: str,
+        context: Optional[Dict[str, Any]] = None,
+        analysis: Optional[Dict[str, Any]] = None,
+        optimization_level: str = "balanced",
+        max_techniques: int = 5,
+        task_type: str = "general",
+        domain: str = "general",
+        user_issues: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Unified optimization pipeline that chains all strategies:
+        1. Standard - baseline optimized prompt + techniques
+        2. DGEO-lite - 3 variants, 1 generation, pick best
+        3. SHDT - 2 trajectory iterations on the best
+        4. CDRAF - 1 round of agent critique refinement
+
+        Returns combined result with all visualization data.
+        """
+        if context is None:
+            context = {"task_type": task_type, "domain": domain}
+
+        self.logger.info("Starting unified optimization pipeline (Standard > DGEO > SHDT > CDRAF)")
+
+        # ---- Phase 1: Standard Optimization ----
+        self.logger.info("Phase 1/4: Standard optimization")
+        standard_result = await self.optimize(
+            prompt=prompt,
+            context=context,
+            optimization_level=optimization_level,
+            max_techniques=max_techniques,
+            analysis=analysis,
+            user_issues=user_issues
+        )
+
+        current_prompt = standard_result.get("optimized_prompt", prompt)
+        techniques_applied = standard_result.get("techniques_applied", [])
+        before_analysis = standard_result.get("before_analysis", analysis or {})
+        score_after_standard = standard_result.get("after_analysis", {}).get("overall_score", 0)
+
+        self.logger.info(
+            f"Phase 1 complete: score {before_analysis.get('overall_score', 0):.1f} -> {score_after_standard:.1f}"
+        )
+
+        # ---- Phase 2: DGEO-lite (3 variants, 1 generation) ----
+        evolution_history = []
+        population_final = []
+        try:
+            from .dgeo_optimizer import get_dgeo_optimizer
+            dgeo = get_dgeo_optimizer()
+
+            self.logger.info("Phase 2/4: DGEO evolutionary search (lite)")
+            dgeo_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+
+            if dgeo_analysis.get("defects"):
+                dgeo_result = await dgeo.optimize(
+                    prompt=current_prompt,
+                    context=context,
+                    analysis=dgeo_analysis,
+                    population_size=3,
+                    generations=1,
+                    optimization_level=optimization_level
+                )
+
+                dgeo_best = dgeo_result.get("best_prompt", current_prompt)
+                dgeo_score = dgeo_result.get("best_score", score_after_standard)
+                evolution_history = dgeo_result.get("evolution_history", [])
+                population_final = dgeo_result.get("population_final", [])
+
+                if dgeo_score > score_after_standard:
+                    current_prompt = dgeo_best
+                    self.logger.info(f"Phase 2 improved: {score_after_standard:.1f} -> {dgeo_score:.1f}")
+                else:
+                    self.logger.info("Phase 2 no improvement, keeping standard result")
+            else:
+                self.logger.info("Phase 2 skipped: no defects remaining")
+        except Exception as e:
+            self.logger.warning(f"Phase 2 (DGEO) failed, continuing: {e}")
+
+        # ---- Phase 3: SHDT (2 trajectory iterations) ----
+        trajectory = []
+        try:
+            self.logger.info("Phase 3/4: SHDT trajectory optimization")
+            shdt_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+
+            if shdt_analysis.get("defects"):
+                shdt_result = await self.optimize_with_trajectory(
+                    prompt=current_prompt,
+                    context=context,
+                    analysis=shdt_analysis,
+                    max_iterations=2,
+                    target_score=9.0,
+                    min_improvement=0.2
+                )
+
+                shdt_prompt = shdt_result.get("final_prompt", current_prompt)
+                shdt_score = shdt_result.get("final_score", 0)
+                trajectory = shdt_result.get("trajectory", [])
+                current_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+                current_score = current_analysis.get("overall_score", 0)
+
+                if shdt_score > current_score:
+                    current_prompt = shdt_prompt
+                    self.logger.info(f"Phase 3 improved: -> {shdt_score:.1f}")
+                else:
+                    self.logger.info("Phase 3 no improvement, keeping previous result")
+            else:
+                self.logger.info("Phase 3 skipped: no defects remaining")
+        except Exception as e:
+            self.logger.warning(f"Phase 3 (SHDT) failed, continuing: {e}")
+
+        # ---- Phase 4: CDRAF (1 round of agent critique) ----
+        critique_rounds = []
+        try:
+            self.logger.info("Phase 4/4: CDRAF agent critique refinement")
+            cdraf_result = await self.refine_with_agents(
+                optimized_prompt=current_prompt,
+                context=context,
+                max_rounds=1
+            )
+
+            if not isinstance(cdraf_result, dict):
+                raise ValueError(f"CDRAF returned {type(cdraf_result).__name__}, expected dict")
+            refined_prompt = cdraf_result.get("refined_prompt", current_prompt)
+            cdraf_score = cdraf_result.get("final_score", 0)
+            critique_rounds = cdraf_result.get("critique_rounds", [])
+            cdraf_prev = await self.orchestrator.analyze_with_agents(current_prompt, context)
+
+            if cdraf_score > cdraf_prev.get("overall_score", 0):
+                current_prompt = refined_prompt
+                self.logger.info(f"Phase 4 improved: -> {cdraf_score:.1f}")
+            else:
+                self.logger.info("Phase 4 no improvement, keeping previous result")
+        except Exception as e:
+            self.logger.warning(f"Phase 4 (CDRAF) failed, continuing: {e}")
+
+        # ---- Final evaluation ----
+        final_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+        final_score = final_analysis["overall_score"]
+        original_score = before_analysis.get("overall_score", 0)
+
+        self.logger.info(
+            f"Unified pipeline complete: {original_score:.1f} -> {final_score:.1f} "
+            f"(+{final_score - original_score:.1f})"
+        )
+
+        return {
+            "original_prompt": prompt,
+            "optimized_prompt": current_prompt,
+            "strategy": "auto",
+            "score_before": original_score,
+            "score_after": final_score,
+            "improvement": round(final_score - original_score, 2),
+            "techniques_applied": techniques_applied,
+            "evolution_history": evolution_history,
+            "population_final": population_final,
+            "trajectory": trajectory,
+            "critique_rounds": critique_rounds,
+            "before_analysis": before_analysis,
+            "after_analysis": final_analysis,
+            "metadata": {
+                "strategy": "auto",
+                "pipeline": ["standard", "dgeo", "shdt", "cdraf"],
+                "optimization_level": optimization_level,
+                "techniques_applied": len(techniques_applied),
+                "dgeo_generations": len(evolution_history),
+                "shdt_iterations": len(trajectory),
+                "cdraf_rounds": len(critique_rounds)
+            }
+        }
+
+    async def optimize_unified_streaming(
+        self,
+        prompt: str,
+        context: Optional[Dict[str, Any]] = None,
+        analysis: Optional[Dict[str, Any]] = None,
+        optimization_level: str = "balanced",
+        max_techniques: int = 5,
+        task_type: str = "general",
+        domain: str = "general",
+        user_issues: Optional[List[str]] = None
+    ):
+        """
+        Streaming version of optimize_unified. Yields SSE events after each phase.
+        """
+        if context is None:
+            context = {"task_type": task_type, "domain": domain}
+
+        phases = [
+            {"phase": 1, "name": "Standard Optimization"},
+            {"phase": 2, "name": "DGEO Evolutionary Search"},
+            {"phase": 3, "name": "SHDT Trajectory Refinement"},
+            {"phase": 4, "name": "CDRAF Agent Critique"},
+        ]
+
+        # Phase 1: Standard
+        yield {"type": "phase", "phase": 1, "name": phases[0]["name"], "status": "running"}
+        try:
+            standard_result = await self.optimize(
+                prompt=prompt, context=context,
+                optimization_level=optimization_level,
+                max_techniques=max_techniques, analysis=analysis,
+                user_issues=user_issues
+            )
+            current_prompt = standard_result.get("optimized_prompt", prompt)
+            techniques_applied = standard_result.get("techniques_applied", [])
+            before_analysis = standard_result.get("before_analysis", analysis or {})
+            score_after_standard = standard_result.get("after_analysis", {}).get("overall_score", 0)
+            yield {"type": "phase", "phase": 1, "name": phases[0]["name"], "status": "complete", "score": round(score_after_standard, 1)}
+        except Exception as e:
+            self.logger.warning(f"Phase 1 failed: {e}")
+            current_prompt = prompt
+            techniques_applied = []
+            before_analysis = analysis or {}
+            score_after_standard = 0
+            yield {"type": "phase", "phase": 1, "name": phases[0]["name"], "status": "failed", "error": str(e)}
+
+        # Phase 2: DGEO
+        yield {"type": "phase", "phase": 2, "name": phases[1]["name"], "status": "running"}
+        evolution_history = []
+        population_final = []
+        try:
+            from .dgeo_optimizer import get_dgeo_optimizer
+            dgeo = get_dgeo_optimizer()
+            dgeo_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+            if dgeo_analysis.get("defects"):
+                dgeo_result = await dgeo.optimize(
+                    prompt=current_prompt, context=context, analysis=dgeo_analysis,
+                    population_size=3, generations=1, optimization_level=optimization_level
+                )
+                dgeo_best = dgeo_result.get("best_prompt", current_prompt)
+                dgeo_score = dgeo_result.get("best_score", score_after_standard)
+                evolution_history = dgeo_result.get("evolution_history", [])
+                population_final = dgeo_result.get("population_final", [])
+                if dgeo_score > score_after_standard:
+                    current_prompt = dgeo_best
+                yield {"type": "phase", "phase": 2, "name": phases[1]["name"], "status": "complete", "score": round(dgeo_score, 1)}
+            else:
+                yield {"type": "phase", "phase": 2, "name": phases[1]["name"], "status": "complete", "score": round(score_after_standard, 1), "skipped": True}
+        except Exception as e:
+            self.logger.warning(f"Phase 2 (DGEO) failed: {e}")
+            yield {"type": "phase", "phase": 2, "name": phases[1]["name"], "status": "failed", "error": str(e)}
+
+        # Phase 3: SHDT
+        yield {"type": "phase", "phase": 3, "name": phases[2]["name"], "status": "running"}
+        trajectory = []
+        try:
+            shdt_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+            if shdt_analysis.get("defects"):
+                shdt_result = await self.optimize_with_trajectory(
+                    prompt=current_prompt, context=context, analysis=shdt_analysis,
+                    max_iterations=2, target_score=9.0, min_improvement=0.2
+                )
+                shdt_prompt = shdt_result.get("final_prompt", current_prompt)
+                shdt_score = shdt_result.get("final_score", 0)
+                trajectory = shdt_result.get("trajectory", [])
+                current_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+                current_score = current_analysis.get("overall_score", 0)
+                if shdt_score > current_score:
+                    current_prompt = shdt_prompt
+                yield {"type": "phase", "phase": 3, "name": phases[2]["name"], "status": "complete", "score": round(shdt_score, 1)}
+            else:
+                yield {"type": "phase", "phase": 3, "name": phases[2]["name"], "status": "complete", "skipped": True}
+        except Exception as e:
+            self.logger.warning(f"Phase 3 (SHDT) failed: {e}")
+            yield {"type": "phase", "phase": 3, "name": phases[2]["name"], "status": "failed", "error": str(e)}
+
+        # Phase 4: CDRAF
+        yield {"type": "phase", "phase": 4, "name": phases[3]["name"], "status": "running"}
+        critique_rounds = []
+        try:
+            cdraf_result = await self.refine_with_agents(
+                optimized_prompt=current_prompt, context=context, max_rounds=1
+            )
+            if not isinstance(cdraf_result, dict):
+                raise ValueError(f"CDRAF returned {type(cdraf_result).__name__}")
+            refined_prompt = cdraf_result.get("refined_prompt", current_prompt)
+            cdraf_score = cdraf_result.get("final_score", 0)
+            critique_rounds = cdraf_result.get("critique_rounds", [])
+            cdraf_prev = await self.orchestrator.analyze_with_agents(current_prompt, context)
+            if cdraf_score > cdraf_prev.get("overall_score", 0):
+                current_prompt = refined_prompt
+            yield {"type": "phase", "phase": 4, "name": phases[3]["name"], "status": "complete", "score": round(cdraf_score, 1)}
+        except Exception as e:
+            self.logger.warning(f"Phase 4 (CDRAF) failed: {e}")
+            yield {"type": "phase", "phase": 4, "name": phases[3]["name"], "status": "failed", "error": str(e)}
+
+        # Final evaluation
+        final_analysis = await self.orchestrator.analyze_with_agents(current_prompt, context)
+        final_score = final_analysis["overall_score"]
+        original_score = before_analysis.get("overall_score", 0)
+
+        yield {
+            "type": "final",
+            "original_prompt": prompt,
+            "optimized_prompt": current_prompt,
+            "strategy": "auto",
+            "score_before": original_score,
+            "score_after": final_score,
+            "improvement": round(final_score - original_score, 2),
+            "techniques_applied": techniques_applied,
+            "evolution_history": evolution_history,
+            "population_final": population_final,
+            "trajectory": trajectory,
+            "critique_rounds": critique_rounds,
+            "before_analysis": before_analysis,
+            "after_analysis": final_analysis,
+            "metadata": {
+                "strategy": "auto",
+                "pipeline": ["standard", "dgeo", "shdt", "cdraf"],
+                "optimization_level": optimization_level,
+                "techniques_applied": len(techniques_applied),
+                "dgeo_generations": len(evolution_history),
+                "shdt_iterations": len(trajectory),
+                "cdraf_rounds": len(critique_rounds)
             }
         }
 

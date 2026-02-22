@@ -6,6 +6,8 @@ interface CardProps {
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   shadow?: 'none' | 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'glass' | 'gradient';
+  hover?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -13,11 +15,13 @@ export const Card: React.FC<CardProps> = ({
   className,
   padding = 'md',
   shadow = 'md',
+  variant = 'default',
+  hover = true,
 }) => {
   const paddingStyles = {
     none: '',
     sm: 'p-3',
-    md: 'p-4',
+    md: 'p-5',
     lg: 'p-6',
   };
 
@@ -28,12 +32,22 @@ export const Card: React.FC<CardProps> = ({
     lg: 'shadow-lg',
   };
 
+  const variantStyles = {
+    default: 'bg-dark-card border border-dark-border',
+    glass: 'bg-dark-card/80 backdrop-blur-md border border-dark-border',
+    gradient: 'bg-gradient-card border border-dark-border',
+  };
+
+  const hoverStyles = hover ? 'hover:scale-[1.01] hover:shadow-glow transition-all duration-300' : '';
+
   return (
     <div
       className={clsx(
-        'bg-white rounded-lg border border-gray-200',
+        'rounded-2xl',
+        variantStyles[variant],
         paddingStyles[padding],
         shadowStyles[shadow],
+        hoverStyles,
         className
       )}
     >

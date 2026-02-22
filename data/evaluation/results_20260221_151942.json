@@ -1,0 +1,601 @@
+{
+  "timestamp": "2026-02-21T15:19:42.534812",
+  "config": {
+    "strategies": [
+      "standard",
+      "dgeo",
+      "shdt",
+      "cdraf",
+      "unified"
+    ],
+    "num_prompts": 2,
+    "provider": "gemini",
+    "total_time_seconds": 906.8363070487976
+  },
+  "results": [
+    {
+      "id": "B001",
+      "category": "code_generation",
+      "task_type": "code_generation",
+      "prompt_preview": "Write a sorting function",
+      "baseline": {
+        "score": 3.3,
+        "total_defects": 4,
+        "high_severity_defects": 4,
+        "consensus": 0.25,
+        "tokens": 4029,
+        "cost": 0.0
+      },
+      "strategies": {
+        "standard": {
+          "strategy": "standard",
+          "status": "success",
+          "techniques_applied": [
+            {
+              "technique_id": null,
+              "technique_name": "Specified the programming language (Python) and function name (`sort_list`).",
+              "target_defects": [],
+              "modification": "Replaced 'sorting function' with concrete details, eliminating ambiguity about the implementation environment and naming conventions."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Defined the input type (mutable list of comparable elements like integers, floats, strings) and the sorting order (ascending, in-place).",
+              "target_defects": [],
+              "modification": "Clarified the exact data structure and behavior expected, removing guesswork about what kind of data to handle and how the sort should operate."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Added specific performance constraints for time (O(N log N) average) and space complexity (minimal, O(log N) or O(1)).",
+              "target_defects": [],
+              "modification": "Provided measurable criteria for evaluating the efficiency of the sorting algorithm, which is crucial in software engineering contexts."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Explicitly disallowed the use of built-in sorting functions and suggested specific algorithms (Quicksort, Mergesort, Heapsort).",
+              "target_defects": [],
+              "modification": "Ensured the task focuses on implementing the algorithm from scratch, testing fundamental understanding rather than library usage, and guided the user towards appropriate algorithms."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Detailed the required output format: complete Python code block, including function definition, docstring, type hints, inline comments, and an example usage block.",
+              "target_defects": [],
+              "modification": "Provided a clear schema for the expected code output, ensuring all necessary components for a production-ready function (documentation, type safety, testability) are included."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Provided context by framing the task as being for a 'software engineer' and emphasizing verification of correctness.",
+              "target_defects": [],
+              "modification": "Established the professional context and quality expectations, guiding the user to produce robust, well-documented, and testable code suitable for a software engineering domain."
+            }
+          ],
+          "optimized_prompt": "As a software engineer, your task is to implement an efficient sorting function in Python. The function should be named `sort_list` and accept a single argument: a mutable list of comparable elements (e.g., integers, floats, strings). It must sort the list in ascending order *in-place*, meaning it should modify the original list directly and not return a new one. The implementation should aim for an average time complexity of O(N log N) and use minimal additional space complexity (ideally O(log N) for recursive approaches or O(1) for iterative ones). Do not use Python's built-in `sort()` method or `sorted()` function within your implementation; instead, implement a common sorting algorithm like Quicksort, Mergesort, or Heapsort from scratch. The final output must be a complete, executable Python code block, including:\n1. The `sort_list` function definition with a clear docstring that explains its purpose, parameters, and behavior.\n2. Type hints for all parameters and the return value (which should be `None` for in-place modification).\n3. Inline comments where necessary to clarify complex logic or specific algorithm steps.\n4. A small example usage block (e.g., `if __name__ == \"__main__\":`) demonstrating how to use the function with a sample list and printing the list before and after sorting to verify its correctness.",
+          "score_after": 9.5,
+          "defects_after": 0,
+          "high_severity_after": 0,
+          "tokens_after": 2379,
+          "cost_after": 0.0,
+          "processing_time_ms": 20811,
+          "defects_list_after": []
+        },
+        "dgeo": {
+          "strategy": "dgeo",
+          "status": "success",
+          "evolution_history": [
+            {
+              "generation": 0,
+              "variants": [
+                {
+                  "id": "clarity",
+                  "score": 9.5,
+                  "focus": "clarity and specificity",
+                  "defects_remaining": 0
+                },
+                {
+                  "id": "structure",
+                  "score": 7.5,
+                  "focus": "structure and formatting",
+                  "defects_remaining": 2
+                },
+                {
+                  "id": "context",
+                  "score": 7.5,
+                  "focus": "context and completeness",
+                  "defects_remaining": 2
+                },
+                {
+                  "id": "high_severity",
+                  "score": 9.5,
+                  "focus": "high-severity issues",
+                  "defects_remaining": 0
+                },
+                {
+                  "id": "all_defects",
+                  "score": 9.5,
+                  "focus": "all detected defects",
+                  "defects_remaining": 0
+                }
+              ],
+              "best_score": 9.5,
+              "avg_score": 8.7
+            },
+            {
+              "generation": 1,
+              "variants": [
+                {
+                  "id": "cross_clarity_high_severity",
+                  "score": 9.65,
+                  "focus": "crossover of clarity and specificity + high-severity issues",
+                  "defects_remaining": 0,
+                  "parent_ids": [
+                    "clarity",
+                    "high_severity"
+                  ]
+                },
+                {
+                  "id": "clarity",
+                  "score": 9.5,
+                  "focus": "clarity and specificity",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                },
+                {
+                  "id": "high_severity",
+                  "score": 9.5,
+                  "focus": "high-severity issues",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                }
+              ],
+              "best_score": 9.65,
+              "avg_score": 9.55
+            },
+            {
+              "generation": 2,
+              "variants": [
+                {
+                  "id": "cross_clarity_high_severity",
+                  "score": 9.65,
+                  "focus": "crossover of clarity and specificity + high-severity issues",
+                  "defects_remaining": 0,
+                  "parent_ids": [
+                    "clarity",
+                    "high_severity"
+                  ]
+                },
+                {
+                  "id": "clarity",
+                  "score": 9.5,
+                  "focus": "clarity and specificity",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                }
+              ],
+              "best_score": 9.65,
+              "avg_score": 9.57
+            },
+            {
+              "generation": 3,
+              "variants": [
+                {
+                  "id": "cross_clarity_high_severity",
+                  "score": 9.65,
+                  "focus": "crossover of clarity and specificity + high-severity issues",
+                  "defects_remaining": 0,
+                  "parent_ids": [
+                    "clarity",
+                    "high_severity"
+                  ]
+                },
+                {
+                  "id": "clarity",
+                  "score": 9.5,
+                  "focus": "clarity and specificity",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                },
+                {
+                  "id": "cross_cross_clarity_high_severity_clarity",
+                  "score": 9.43,
+                  "focus": "crossover of crossover of clarity and specificity + high-severity issues + clarity and specificity",
+                  "defects_remaining": 0,
+                  "parent_ids": [
+                    "cross_clarity_high_severity",
+                    "clarity"
+                  ]
+                }
+              ],
+              "best_score": 9.65,
+              "avg_score": 9.53
+            }
+          ],
+          "optimized_prompt": "Write a Python function named `sort_integers_ascending` that takes a list of integers as its single argument. The function must sort this list in ascending order directly in-place, modifying the input list and not returning a new one. It must implement an efficient comparison-based sorting algorithm (such as Merge Sort, Quick Sort, or Heap Sort) with an average-case time complexity of O(N log N). Do not use Python's built-in `list.sort()` method or the `sorted()` function. Include a clear docstring explaining the function's purpose, its parameters, and its behavior. Provide the function within a Python markdown code block.",
+          "score_after": 8.5,
+          "defects_after": 1,
+          "high_severity_after": 1,
+          "tokens_after": 4237,
+          "cost_after": 0.0,
+          "processing_time_ms": 205463,
+          "defects_list_after": [
+            {
+              "agent": "ClarityAgent",
+              "confidence": 0.98,
+              "evidence": "takes a list of integers as its single argument",
+              "explanation": "While the prompt specifies the input type as 'list of integers', it does not provide instructions on how the function should handle common edge cases such as an empty list `[]` or a list containing a single element `[5]`. A complete specification for a sorting function would typically include expected behavior for these scenarios, ensuring robustness and predictable outcomes across all valid inputs. Without this, the generated function might not explicitly account for these cases, potentially leading to less robust code.",
+              "id": "D002",
+              "name": "Underspecification",
+              "category": "specification_and_intent",
+              "severity": "high",
+              "description": "Missing critical information needed to complete the task",
+              "remediation": "Add all necessary specifications: format, constraints, scope, criteria, context.",
+              "consensus": 1.0,
+              "detected_by": [
+                "ClarityAgent"
+              ],
+              "priority_boosts": [
+                "task:code_generation(x1.4)"
+              ]
+            }
+          ]
+        },
+        "shdt": {
+          "strategy": "shdt",
+          "status": "success",
+          "trajectory": [
+            {
+              "version": 0,
+              "prompt": "Write a sorting function",
+              "score": 3.3,
+              "defects_fixed": [],
+              "defects_remaining": [
+                "D001",
+                "D002",
+                "D008",
+                "D011"
+              ],
+              "defects_introduced": [],
+              "improvement": 0.0
+            },
+            {
+              "version": 1,
+              "prompt": "Generate a Python function named `sort_list` that takes a list of integers as input and returns a new list containing the same integers sorted in ascending order. The function should implement an efficient sorting algorithm (e.g., Timsort, Quicksort, or Mergesort). Include a clear docstring explaining its purpose, parameters, and return value. The output should be only the Python code for the function, without any additional explanatory text.",
+              "score": 7.0,
+              "defects_fixed": [
+                "D001",
+                "D002",
+                "D008",
+                "D011"
+              ],
+              "defects_remaining": [
+                "D005"
+              ],
+              "defects_introduced": [
+                "D005"
+              ],
+              "improvement": 3.7
+            },
+            {
+              "version": 2,
+              "prompt": "You are an AI assistant specialized in generating high-quality Python code for software engineering tasks.\n\nThe user requires a specific Python function based on the following specifications:\n\nGenerate a Python function named `sort_list` that takes a list of integers as input and returns a new list containing the same integers sorted in ascending order. The function should implement an efficient sorting algorithm (e.g., Timsort, Quicksort, or Mergesort). Include a clear docstring explaining its purpose, parameters, and return value. The output should be only the Python code for the function, without any additional explanatory text.",
+              "score": 9.75,
+              "defects_fixed": [
+                "D005"
+              ],
+              "defects_remaining": [],
+              "defects_introduced": [],
+              "improvement": 2.75
+            }
+          ],
+          "optimized_prompt": "You are an AI assistant specialized in generating high-quality Python code for software engineering tasks.\n\nThe user requires a specific Python function based on the following specifications:\n\nGenerate a Python function named `sort_list` that takes a list of integers as input and returns a new list containing the same integers sorted in ascending order. The function should implement an efficient sorting algorithm (e.g., Timsort, Quicksort, or Mergesort). Include a clear docstring explaining its purpose, parameters, and return value. The output should be only the Python code for the function, without any additional explanatory text.",
+          "score_after": 9.5,
+          "defects_after": 0,
+          "high_severity_after": 0,
+          "tokens_after": 2033,
+          "cost_after": 0.0,
+          "processing_time_ms": 172871,
+          "defects_list_after": []
+        },
+        "cdraf": {
+          "strategy": "cdraf",
+          "status": "error",
+          "error": "Failed to optimize prompt: All agents failed - cannot perform analysis",
+          "processing_time_ms": 66547,
+          "score_after": 0.0,
+          "defects_after": 0,
+          "high_severity_after": 0
+        },
+        "unified": {
+          "strategy": "unified",
+          "status": "error",
+          "error": "Failed to optimize prompt: Gemini API error: Server disconnected without sending a response.",
+          "processing_time_ms": 59115,
+          "score_after": 0.0,
+          "defects_after": 0,
+          "high_severity_after": 0
+        }
+      }
+    },
+    {
+      "id": "B002",
+      "category": "code_generation",
+      "task_type": "code_generation",
+      "prompt_preview": "Make a website",
+      "baseline": {
+        "score": 1.66,
+        "total_defects": 5,
+        "high_severity_defects": 5,
+        "consensus": 0.25,
+        "tokens": 4099,
+        "cost": 0.0
+      },
+      "strategies": {
+        "standard": {
+          "strategy": "standard",
+          "status": "success",
+          "techniques_applied": [
+            {
+              "technique_id": null,
+              "technique_name": "Replaced 'Make a website' with 'Generate the complete, production-ready code for a simple, static personal portfolio website.'",
+              "target_defects": [],
+              "modification": "Addressed ambiguity and underspecification by defining the type of website, its purpose, and clarifying that the output should be code, aligning with the code_generation task context."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Specified core technologies: HTML5, CSS3, and minimal JavaScript.",
+              "target_defects": [],
+              "modification": "Addressed underspecification by setting clear technical constraints and scope for the website's implementation."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Detailed the required sections of the website: Header, Hero/About, Skills, Projects, Contact, and Footer, along with their expected content.",
+              "target_defects": [],
+              "modification": "Addressed ambiguity and underspecification by providing specific, measurable criteria for the website's structure and content, leaving no room for misinterpretation."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Added design criteria: clean, modern, fully responsive, semantic HTML5, organized external CSS, and external unobtrusive JavaScript.",
+              "target_defects": [],
+              "modification": "Addressed underspecification by providing explicit quality and design constraints, ensuring the generated code meets professional standards."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Explicitly defined the output format as three separate code blocks for `index.html`, `style.css`, and `script.js`.",
+              "target_defects": [],
+              "modification": "Addressed format specification issues by providing a clear and detailed schema for the expected output, crucial for code generation tasks."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Included context regarding asset references (e.g., `assets/` directory).",
+              "target_defects": [],
+              "modification": "Addressed missing essential context by providing practical details for integrating external resources, making the generated code more usable."
+            },
+            {
+              "technique_id": null,
+              "technique_name": "Shifted focus from a generic command ('Make a website') to a specific request for code generation ('Generate the complete, production-ready code...').",
+              "target_defects": [],
+              "modification": "Addressed intent misalignment by clearly stating the goal is to produce functional code, aligning with the software_engineering domain and code_generation task."
+            }
+          ],
+          "optimized_prompt": "Generate the complete, production-ready code for a simple, static personal portfolio website. This website should be a single-page application, designed to showcase a developer's profile, skills, and projects.\n\nThe website must be built using standard web technologies: HTML5 for structure, CSS3 for styling, and minimal JavaScript for any basic interactivity (e.g., smooth scrolling for navigation links or a responsive mobile menu toggle). No backend development or server-side logic is required; the site should be entirely client-side.\n\nThe structure of the website should include the following distinct sections:\n1.  **Header**: A navigation bar containing the developer's name/logo and links to the main sections: 'About', 'Skills', 'Projects', and 'Contact'.\n2.  **Hero/About Section**: A prominent introductory section with the developer's photo (placeholder), a brief professional title, and a concise 'About Me' paragraph.\n3.  **Skills Section**: A visually appealing display of core technical skills, possibly using icons or progress bars (placeholders for specific skills like HTML, CSS, JavaScript, Python, React, etc.).\n4.  **Projects Section**: A gallery or list showcasing 2-3 example projects. Each project entry should include a title, a short description, and a placeholder link (e.g., 'View Project' or 'GitHub Repo').\n5.  **Contact Section**: A section with contact information (e.g., email address, LinkedIn profile link) and a placeholder for a simple contact form or social media icons.\n6.  **Footer**: Standard copyright information and potentially quick links or social media icons.\n\nThe design must be clean, modern, and fully responsive, ensuring optimal viewing experience across various devices (desktops, tablets, and mobile phones). Semantic HTML5 elements should be used throughout. CSS styling should be organized, external to the HTML, and follow best practices. Any JavaScript should also be external and unobtrusive.\n\nProvide the output as three distinct code blocks:\n1.  The complete HTML code for `index.html`.\n2.  The complete CSS code for `style.css`.\n3.  The complete JavaScript code for `script.js` (if any interactivity is implemented).\n\nEnsure that all necessary asset references (e.g., for placeholder images, fonts, or icons) are correctly structured, assuming they would reside in a common `assets/` directory relative to the `index.html` file.",
+          "score_after": 9.25,
+          "defects_after": 0,
+          "high_severity_after": 0,
+          "tokens_after": 2825,
+          "cost_after": 0.0,
+          "processing_time_ms": 23291,
+          "defects_list_after": []
+        },
+        "dgeo": {
+          "strategy": "dgeo",
+          "status": "success",
+          "evolution_history": [
+            {
+              "generation": 0,
+              "variants": [
+                {
+                  "id": "clarity",
+                  "score": 0.0,
+                  "focus": "clarity and specificity",
+                  "defects_remaining": 0
+                },
+                {
+                  "id": "structure",
+                  "score": 0.0,
+                  "focus": "structure and formatting",
+                  "defects_remaining": 0
+                },
+                {
+                  "id": "context",
+                  "score": 0.0,
+                  "focus": "context and completeness",
+                  "defects_remaining": 0
+                },
+                {
+                  "id": "high_severity",
+                  "score": 0.0,
+                  "focus": "high-severity issues",
+                  "defects_remaining": 0
+                },
+                {
+                  "id": "all_defects",
+                  "score": 9.5,
+                  "focus": "all detected defects",
+                  "defects_remaining": 0
+                }
+              ],
+              "best_score": 9.5,
+              "avg_score": 1.9
+            },
+            {
+              "generation": 1,
+              "variants": [
+                {
+                  "id": "all_defects",
+                  "score": 9.5,
+                  "focus": "all detected defects",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                },
+                {
+                  "id": "cross_all_defects_clarity",
+                  "score": 9.0,
+                  "focus": "crossover of all detected defects + clarity and specificity",
+                  "defects_remaining": 1,
+                  "parent_ids": [
+                    "all_defects",
+                    "clarity"
+                  ]
+                },
+                {
+                  "id": "clarity",
+                  "score": 0.0,
+                  "focus": "clarity and specificity",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                }
+              ],
+              "best_score": 9.5,
+              "avg_score": 6.17
+            },
+            {
+              "generation": 2,
+              "variants": [
+                {
+                  "id": "all_defects",
+                  "score": 9.5,
+                  "focus": "all detected defects",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                },
+                {
+                  "id": "cross_all_defects_clarity",
+                  "score": 9.0,
+                  "focus": "crossover of all detected defects + clarity and specificity",
+                  "defects_remaining": 1,
+                  "parent_ids": [
+                    "all_defects",
+                    "clarity"
+                  ]
+                },
+                {
+                  "id": "mut_cross_all_defects_clarity",
+                  "score": 8.0,
+                  "focus": "mutation of crossover of all detected defects + clarity and specificity",
+                  "defects_remaining": 1,
+                  "parent_ids": [
+                    "cross_all_defects_clarity"
+                  ]
+                }
+              ],
+              "best_score": 9.5,
+              "avg_score": 8.83
+            },
+            {
+              "generation": 3,
+              "variants": [
+                {
+                  "id": "all_defects",
+                  "score": 9.5,
+                  "focus": "all detected defects",
+                  "defects_remaining": 0,
+                  "parent_ids": []
+                },
+                {
+                  "id": "mut_cross_all_defects_clarity",
+                  "score": 9.5,
+                  "focus": "mutation of crossover of all detected defects + clarity and specificity",
+                  "defects_remaining": 0,
+                  "parent_ids": [
+                    "cross_all_defects_clarity"
+                  ]
+                },
+                {
+                  "id": "cross_all_defects_clarity",
+                  "score": 9.0,
+                  "focus": "crossover of all detected defects + clarity and specificity",
+                  "defects_remaining": 1,
+                  "parent_ids": [
+                    "all_defects",
+                    "clarity"
+                  ]
+                }
+              ],
+              "best_score": 9.5,
+              "avg_score": 9.33
+            }
+          ],
+          "optimized_prompt": "Generate the complete front-end code for a professional, responsive, and accessible personal portfolio website. This website is intended for a software developer to showcase their skills, projects, and contact information to potential employers or collaborators. The primary goal is to provide a clear and engaging online presence that highlights the developer's capabilities.\n\nThe website must adhere to the following specifications:\n1.  **Technology Stack**: Utilize HTML5 for structure, CSS3 for styling, and ES6+ JavaScript for any interactive elements. No backend code or database integration is required; the site should be entirely static.\n2.  **Responsiveness**: The layout and content must be fully responsive, adapting seamlessly to various screen sizes, including desktop, tablet, and mobile devices.\n3.  **Accessibility**: Adhere to WCAG 2.1 AA guidelines where applicable for a static site. This includes semantic HTML, proper use of alt text for images, sufficient color contrast, and keyboard navigability.\n4.  **Browser Compatibility**: The website should render and function correctly across major modern browsers (e.g., Chrome, Firefox, Safari, Edge).\n\nThe website should include the following main sections and features:\n*   **Home/About Me**: A prominent section featuring a brief professional introduction, a profile picture, and a concise list of key skills or technologies.\n*   **Projects**: A dedicated section displaying at least three example projects. Each project entry should include a title, a short description, and a link to the project's repository (e.g., GitHub) or a live demo, if available.\n*   **Contact**: A clear section providing contact information, including an email address and links to professional social media profiles (e.g., LinkedIn, GitHub).\n*   **Navigation**: A responsive navigation bar (e.g., a hamburger menu on mobile) that allows users to easily jump between the main sections of the website.\n\n**Output Format Specification**:\nThe generated code should be clean, well-commented, and follow best practices for front-end development. Provide the complete content for each file, organized into a logical directory structure as follows:\n```\nwebsite/\n\u251c\u2500\u2500 index.html\n\u251c\u2500\u2500 css/\n\u2502   \u2514\u2500\u2500 style.css\n\u2514\u2500\u2500 js/\n    \u2514\u2500\u2500 script.js\n```",
+          "score_after": 7.6,
+          "defects_after": 2,
+          "high_severity_after": 2,
+          "tokens_after": 4551,
+          "cost_after": 0.0,
+          "processing_time_ms": 218563,
+          "defects_list_after": [
+            {
+              "agent": "ContextAgent",
+              "confidence": 0.9,
+              "evidence": "The website should include the following main sections and features: ... Home/About Me: A prominent section featuring a brief professional introduction, a profile picture, and a concise list of key skills or technologies. ... Projects: A dedicated section displaying at least three example projects. Each project entry should include a title, a short description, and a link to the project's repository ... Contact: A clear section providing contact information, including an email address and links to professional social media profiles.",
+              "explanation": "The prompt asks for a 'complete front-end code' for a 'personal portfolio website' but provides no actual personal content. It specifies sections like 'Home/About Me', 'Projects', and 'Contact' but doesn't include the developer's name, profile picture, specific skills, project titles, descriptions, links, email address, or social media profiles. This missing context means the AI will have to invent placeholder content, which might not be what the user implicitly expects for a 'personal' site, even if it's a template.",
+              "id": "D011",
+              "name": "Missing Essential Context",
+              "category": "context_and_memory",
+              "severity": "high",
+              "description": "Assumes knowledge or context that model doesn't have",
+              "remediation": "Provide all necessary context. Don't assume prior knowledge.",
+              "consensus": 1.0,
+              "detected_by": [
+                "ContextAgent"
+              ]
+            },
+            {
+              "agent": "StructureAgent",
+              "confidence": 0.84,
+              "evidence": "Provide the complete content for each file, organized into a logical directory structure as follows:\n```\nwebsite/\n\u251c\u2500\u2500 index.html\n\u251c\u2500\u2500 css/\n\u2502   \u2514\u2500\u2500 style.css\n\u2514\u2500\u2500 js/\n    \u2514\u2500\u2500 script.js\n```",
+              "explanation": "While the desired file structure for the *generated code* is perfectly clear, the prompt does not explicitly specify the *format for the LLM's response* when delivering multiple files. It asks to 'Provide the complete content for each file,' but doesn't state *how* these files should be presented (e.g., as separate markdown code blocks, within a JSON object mapping filenames to content, etc.). This ambiguity could lead to inconsistent or less readable output presentation from the model.",
+              "id": "D008",
+              "name": "Format Specification Issues",
+              "category": "structure_and_formatting",
+              "severity": "high",
+              "description": "Output format requirements are unclear or poorly specified",
+              "remediation": "Provide explicit format specification with schema or detailed example.",
+              "consensus": 1.0,
+              "detected_by": [
+                "StructureAgent"
+              ],
+              "priority_boosts": [
+                "task:code_generation(x1.4)"
+              ]
+            }
+          ]
+        },
+        "shdt": {
+          "strategy": "shdt",
+          "status": "error",
+          "error": "All agents failed - cannot perform analysis",
+          "processing_time_ms": 97346,
+          "score_after": 0.0,
+          "defects_after": 0,
+          "high_severity_after": 0
+        },
+        "cdraf": {
+          "strategy": "cdraf",
+          "status": "error",
+          "error": "Failed to optimize prompt: Gemini API error: [Errno 11001] getaddrinfo failed",
+          "processing_time_ms": 12228,
+          "score_after": 0.0,
+          "defects_after": 0,
+          "high_severity_after": 0
+        },
+        "unified": {
+          "strategy": "unified",
+          "status": "error",
+          "error": "Failed to optimize prompt: Gemini API error: [Errno 11001] getaddrinfo failed",
+          "processing_time_ms": 12028,
+          "score_after": 0.0,
+          "defects_after": 0,
+          "high_severity_after": 0
+        }
+      }
+    }
+  ]
+}

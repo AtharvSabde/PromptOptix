@@ -140,17 +140,28 @@ class BaseAgent(ABC):
 
             # Call LLM asynchronously (use asyncio.to_thread for sync LLM service)
             # This allows parallel execution of multiple agents
+            # Pass provider from context if specified by user
+            provider = context.get("provider") if context else None
             result = await asyncio.to_thread(
                 self.llm_service.call_with_json_response,
                 prompt=detection_prompt,
                 system_prompt="You are an expert prompt defect detection system. Return only valid JSON.",
                 temperature=0.3,
-                max_tokens=2000,
-                required_fields=["defects", "overall_score"]
+                max_tokens=4096,
+                required_fields=["defects", "overall_score"],
+                provider=provider
             )
 
             # Parse response
             parsed = result["parsed_response"]
+
+            # Handle case where LLM returns a list instead of a dict
+            if isinstance(parsed, list):
+                self.logger.warning(f"{self.name}: LLM returned list instead of dict, wrapping")
+                parsed = {"defects": parsed, "overall_score": 5.0}
+            elif not isinstance(parsed, dict):
+                self.logger.warning(f"{self.name}: LLM returned {type(parsed).__name__}, using empty result")
+                parsed = {"defects": [], "overall_score": 5.0}
 
             # Validate response structure
             if "defects" not in parsed:

@@ -16,7 +16,7 @@ from typing import Dict, Any
 
 from .config import Config
 from .utils import get_logger
-from .routes import analyze, optimize, health
+from .routes import analyze, optimize, health, history
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -78,6 +78,7 @@ app.add_middleware(
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 app.include_router(optimize.router, prefix="/api", tags=["Optimization"])
 app.include_router(health.router, prefix="/api", tags=["Health"])
+app.include_router(history.router, prefix="/api", tags=["Advanced Optimization & History"])
 
 
 # Global exception handler
@@ -102,18 +103,21 @@ async def root():
     """Root endpoint with API information"""
     return {
         "name": "PromptOptimizer Pro",
-        "version": "1.0.0",
-        "description": "Multi-Agent Prompt Engineering System",
+        "version": "2.0.0",
+        "description": "Multi-Agent Prompt Engineering System with DGEO, SHDT & CDRAF",
         "endpoints": {
             "docs": "/docs",
             "health": "/api/health",
             "analyze": "/api/analyze",
             "optimize": "/api/optimize",
-            "techniques": "/api/techniques"
+            "optimize_advanced": "/api/optimize/advanced",
+            "techniques": "/api/techniques",
+            "history": "/api/history"
         },
         "agents": 4,
-        "techniques": 15,
-        "defects_tracked": 28
+        "techniques": 41,
+        "defects_tracked": 28,
+        "optimization_strategies": ["standard", "dgeo", "shdt", "cdraf"]
     }
 
 

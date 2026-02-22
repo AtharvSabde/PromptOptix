@@ -62,7 +62,8 @@ async def optimize_prompt(request: OptimizeRequest) -> Dict[str, Any]:
         # Build context
         context = {
             "task_type": request.task_type,
-            "domain": request.domain
+            "domain": request.domain,
+            "user_issues": request.user_issues
         }
 
         # Run optimization
@@ -71,7 +72,8 @@ async def optimize_prompt(request: OptimizeRequest) -> Dict[str, Any]:
             context=context,
             optimization_level=request.optimization_level,
             max_techniques=request.max_techniques,
-            analysis=request.analysis
+            analysis=request.analysis,
+            user_issues=request.user_issues
         )
 
         logger.info(

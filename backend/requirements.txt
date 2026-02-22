@@ -8,7 +8,8 @@ python-dotenv
 # ===== LLM APIs =====
 anthropic
 groq
-openai  # For tiktoken
+openai
+google-genai
 
 # ===== Token Counting =====
 tiktoken
@@ -30,6 +31,7 @@ rouge-score
 # ===== Data Processing =====
 numpy
 pandas
+scipy
 
 # ===== Testing =====
 pytest

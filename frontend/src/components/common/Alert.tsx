@@ -19,31 +19,31 @@ export const Alert: React.FC<AlertProps> = ({
 }) => {
   const variantStyles = {
     info: {
-      container: 'bg-blue-50 border-blue-200',
-      icon: 'text-blue-600',
-      title: 'text-blue-800',
-      text: 'text-blue-700',
+      container: 'bg-accent-cyan/10 border-l-4 border-l-accent-cyan',
+      icon: 'text-accent-cyan',
+      title: 'text-white',
+      text: 'text-gray-300',
       Icon: Info,
     },
     success: {
-      container: 'bg-green-50 border-green-200',
-      icon: 'text-green-600',
-      title: 'text-green-800',
-      text: 'text-green-700',
+      container: 'bg-green-500/10 border-l-4 border-l-green-500',
+      icon: 'text-green-500',
+      title: 'text-white',
+      text: 'text-gray-300',
       Icon: CheckCircle,
     },
     warning: {
-      container: 'bg-yellow-50 border-yellow-200',
-      icon: 'text-yellow-600',
-      title: 'text-yellow-800',
-      text: 'text-yellow-700',
+      container: 'bg-yellow-500/10 border-l-4 border-l-yellow-500',
+      icon: 'text-yellow-500',
+      title: 'text-white',
+      text: 'text-gray-300',
       Icon: AlertCircle,
     },
     error: {
-      container: 'bg-red-50 border-red-200',
-      icon: 'text-red-600',
-      title: 'text-red-800',
-      text: 'text-red-700',
+      container: 'bg-red-500/10 border-l-4 border-l-red-500',
+      icon: 'text-red-500',
+      title: 'text-white',
+      text: 'text-gray-300',
       Icon: XCircle,
     },
   };
@@ -54,7 +54,7 @@ export const Alert: React.FC<AlertProps> = ({
   return (
     <div
       className={clsx(
-        'rounded-lg border p-4',
+        'rounded-xl p-4 backdrop-blur-sm',
         styles.container,
         className
       )}
@@ -65,11 +65,11 @@ export const Alert: React.FC<AlertProps> = ({
         </div>
         <div className="ml-3 flex-1">
           {title && (
-            <h3 className={clsx('text-sm font-medium', styles.title)}>
+            <h3 className={clsx('text-sm font-semibold', styles.title)}>
               {title}
             </h3>
           )}
-          <div className={clsx('text-sm', title ? 'mt-2' : '', styles.text)}>
+          <div className={clsx('text-sm', title ? 'mt-1' : '', styles.text)}>
             {children}
           </div>
         </div>
@@ -78,7 +78,7 @@ export const Alert: React.FC<AlertProps> = ({
             <button
               onClick={onClose}
               className={clsx(
-                'inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2',
+                'inline-flex rounded-md p-1.5 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-dark-bg',
                 styles.icon
               )}
             >

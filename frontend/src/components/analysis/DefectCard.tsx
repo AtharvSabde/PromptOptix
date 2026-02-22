@@ -26,14 +26,14 @@ export const DefectCard: React.FC<DefectCardProps> = ({ defect }) => {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-mono text-gray-500">{defect.id}</span>
-            <h3 className="text-lg font-semibold text-gray-900">{defect.name}</h3>
+            <h3 className="text-lg font-semibold text-white">{defect.name}</h3>
             <Badge severity={defect.severity}>{defect.severity.toUpperCase()}</Badge>
           </div>
 
           {/* Confidence */}
           <div className="flex items-center gap-4 mb-3">
             <div className="flex-1">
-              <div className="flex justify-between text-xs text-gray-600 mb-1">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
                 <span>Confidence</span>
                 <span className="font-medium">{formatConfidence(defect.confidence)}</span>
               </div>
@@ -46,7 +46,7 @@ export const DefectCard: React.FC<DefectCardProps> = ({ defect }) => {
             </div>
 
             {defect.consensus !== undefined && (
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-gray-400">
                 <span className="font-medium">Consensus:</span> {formatConfidence(defect.consensus)}
                 <span className="text-gray-500 ml-1">
                   ({defect.detected_by.length}/{4})
@@ -56,14 +56,14 @@ export const DefectCard: React.FC<DefectCardProps> = ({ defect }) => {
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-700 mb-3">{defect.description}</p>
+          <p className="text-sm text-gray-300 mb-3">{defect.description}</p>
 
           {/* Detected by agents */}
           <div className="flex flex-wrap gap-2 mb-3">
             {defect.detected_by.map(agent => (
               <span
                 key={agent}
-                className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-xs font-medium text-gray-700"
+                className="inline-flex items-center px-2 py-1 rounded-md bg-gray-700 text-xs font-medium text-gray-200"
               >
                 <span className="mr-1">{AGENT_ICONS[agent as keyof typeof AGENT_ICONS]}</span>
                 {agent}
@@ -90,27 +90,27 @@ export const DefectCard: React.FC<DefectCardProps> = ({ defect }) => {
         <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
           {/* Evidence */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <h4 className="text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
               📝 Evidence
             </h4>
             <div className="bg-gray-50 p-3 rounded-md">
-              <p className="text-sm text-gray-800 font-mono">{defect.evidence}</p>
+              <p className="text-sm text-gray-900 font-mono">{defect.evidence}</p>
             </div>
           </div>
 
           {/* Explanation */}
           {defect.explanation && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <h4 className="text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
                 💭 Explanation
               </h4>
-              <p className="text-sm text-gray-700">{defect.explanation}</p>
+              <p className="text-sm text-gray-300">{defect.explanation}</p>
             </div>
           )}
 
           {/* Remediation */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <h4 className="text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
               💡 How to Fix
             </h4>
             <p className="text-sm text-gray-700">{defect.remediation}</p>

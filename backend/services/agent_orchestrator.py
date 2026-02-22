@@ -12,6 +12,7 @@ This is the CORE INNOVATION of PromptOptimizer Pro:
 """
 
 import asyncio
+import time
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
 
@@ -138,6 +139,8 @@ class AgentOrchestrator:
             context = {}
 
         try:
+            start_time = time.time()
+
             logger.info(
                 "Starting multi-agent analysis",
                 extra={
@@ -200,6 +203,10 @@ class AgentOrchestrator:
                 user_issues=user_issues
             )
 
+            # Add processing time
+            processing_time_ms = int((time.time() - start_time) * 1000)
+            aggregated["metadata"]["processing_time_ms"] = processing_time_ms
+
             logger.info(
                 "Multi-agent analysis complete",
                 extra={
@@ -208,7 +215,8 @@ class AgentOrchestrator:
                     "consensus": aggregated["consensus"],
                     "successful_agents": len(successful_results),
                     "failed_agents": len(failed_agents),
-                    "user_issues_provided": bool(user_issues)
+                    "user_issues_provided": bool(user_issues),
+                    "processing_time_ms": processing_time_ms
                 }
             )
 
@@ -227,6 +235,77 @@ class AgentOrchestrator:
                     "error_type": type(e).__name__
                 }
             )
+
+    async def analyze_with_agents_streaming(
+        self,
+        prompt: str,
+        context: Optional[Dict[str, Any]] = None,
+        user_issues: Optional[List[str]] = None
+    ):
+        """
+        Stream analysis results as each agent completes (SSE-friendly async generator).
+
+        Yields dicts with types: agent_start, agent_complete, and final aggregated result.
+        """
+        if context is None:
+            context = {}
+
+        start_time = time.time()
+
+        # Emit start events for all agents
+        for agent in self.agents:
+            yield {"type": "agent_start", "agent": agent.name, "focus_area": agent.focus_area}
+
+        # Create named tasks
+        tasks = {
+            asyncio.create_task(agent.analyze(prompt, context), name=agent.name): agent
+            for agent in self.agents
+        }
+
+        successful_results = []
+        failed_agents = []
+        pending = set(tasks.keys())
+
+        while pending:
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                agent = tasks[task]
+                try:
+                    result = task.result()
+                    successful_results.append(result)
+                    yield {
+                        "type": "agent_complete",
+                        "agent": agent.name,
+                        "score": result.get("score", 0),
+                        "defects_count": len(result.get("defects", [])),
+                        "summary": result.get("summary", ""),
+                        "status": "complete"
+                    }
+                except Exception as e:
+                    failed_agents.append(agent.name)
+                    logger.warning(f"Agent {agent.name} failed: {e}")
+                    yield {
+                        "type": "agent_complete",
+                        "agent": agent.name,
+                        "status": "failed",
+                        "error": str(e)
+                    }
+
+        if not successful_results:
+            yield {"type": "error", "message": "All agents failed"}
+            return
+
+        # Aggregate results
+        task_type = context.get("task_type", "general")
+        domain = context.get("domain", "general")
+        aggregated = self._aggregate_results(
+            successful_results, task_type=task_type, domain=domain, user_issues=user_issues
+        )
+
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        aggregated["metadata"]["processing_time_ms"] = processing_time_ms
+
+        yield {"type": "final", **aggregated}
 
     def _aggregate_results(
         self,
@@ -426,12 +505,31 @@ class AgentOrchestrator:
         # Build agent results dictionary
         agent_results_dict = {r["agent"]: r for r in results}
 
+        # Calculate total cost and tokens from agent metadata
+        total_cost = 0.0
+        total_tokens = 0
+        for r in results:
+            meta = r.get("metadata", {})
+            cost = meta.get("cost", {})
+            usage = meta.get("usage", {})
+            total_cost += cost.get("total_cost", 0.0) if isinstance(cost, dict) else 0.0
+            total_tokens += usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
+
+        n_defects = len(aggregated_defects)
+        consensus_pct = f"{overall_consensus:.0%}"
+        summary = (
+            f"Found {n_defects} defect{'s' if n_defects != 1 else ''} "
+            f"with {consensus_pct} agent consensus. "
+            f"Overall quality score: {overall_score:.1f}/10."
+        )
+
         result = {
             "overall_score": round(overall_score, 2),
             "defects": aggregated_defects,
             "agent_results": agent_results_dict,
             "consensus": round(overall_consensus, 2),
             "disagreements": disagreements,
+            "summary": summary,
             "metadata": {
                 "num_agents": num_agents,
                 "total_defects_raw": sum(len(r.get("defects", [])) for r in results),
@@ -440,7 +538,9 @@ class AgentOrchestrator:
                 "consensus_threshold": Config.CONSENSUS_THRESHOLD,
                 "task_type": task_type,
                 "domain": domain,
-                "priority_boosts_applied": bool(task_priorities or domain_priorities or user_issue_boosts)
+                "priority_boosts_applied": bool(task_priorities or domain_priorities or user_issue_boosts),
+                "total_cost": round(total_cost, 6),
+                "total_tokens": total_tokens
             }
         }
 

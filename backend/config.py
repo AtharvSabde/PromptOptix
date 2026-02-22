@@ -50,6 +50,8 @@ class LLMProvider(str, Enum):
     """Supported LLM providers"""
     ANTHROPIC = "anthropic"
     GROQ = "groq"
+    OPENAI = "openai"
+    GEMINI = "gemini"
 
 
 class Config:
@@ -58,6 +60,8 @@ class Config:
     # ===== API Keys =====
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     
     # ===== Flask Settings =====
     FLASK_ENV = os.getenv("FLASK_ENV", "development")
@@ -101,12 +105,54 @@ class Config:
                 "supports_streaming": True,
                 "best_for": ["fast_analysis", "testing"]
             }
+        },
+        "openai": {
+            "gpt-4o": {
+                "name": "GPT-4o",
+                "context_window": 128000,
+                "max_output": 16384,
+                "cost_per_1k_input": 0.0025,
+                "cost_per_1k_output": 0.01,
+                "supports_streaming": True,
+                "best_for": ["analysis", "optimization", "reasoning"]
+            },
+            "gpt-4o-mini": {
+                "name": "GPT-4o Mini",
+                "context_window": 128000,
+                "max_output": 16384,
+                "cost_per_1k_input": 0.00015,
+                "cost_per_1k_output": 0.0006,
+                "supports_streaming": True,
+                "best_for": ["fast_analysis", "testing"]
+            }
+        },
+        "gemini": {
+            "gemini-2.0-flash": {
+                "name": "Gemini 2.0 Flash",
+                "context_window": 1048576,
+                "max_output": 8192,
+                "cost_per_1k_input": 0.0001,
+                "cost_per_1k_output": 0.0004,
+                "supports_streaming": True,
+                "best_for": ["fast_analysis", "testing"]
+            },
+            "gemini-1.5-pro": {
+                "name": "Gemini 1.5 Pro",
+                "context_window": 2097152,
+                "max_output": 8192,
+                "cost_per_1k_input": 0.00125,
+                "cost_per_1k_output": 0.005,
+                "supports_streaming": True,
+                "best_for": ["analysis", "optimization", "reasoning"]
+            }
         }
     }
     
     # Default models for each provider
     ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
     GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     
     # ===== Token Limits =====
     MAX_ANALYSIS_TOKENS = int(os.getenv("MAX_ANALYSIS_TOKENS", "4000"))
@@ -338,6 +384,22 @@ class Config:
         }
     }
     
+    # ===== Advanced Optimization Strategies =====
+    # DGEO: Defect-Guided Evolutionary Optimization
+    DGEO_POPULATION_SIZE = int(os.getenv("DGEO_POPULATION_SIZE", "5"))
+    DGEO_GENERATIONS = int(os.getenv("DGEO_GENERATIONS", "3"))
+
+    # SHDT: Scored History with Defect Trajectories
+    SHDT_MAX_ITERATIONS = int(os.getenv("SHDT_MAX_ITERATIONS", "4"))
+    SHDT_TARGET_SCORE = float(os.getenv("SHDT_TARGET_SCORE", "8.0"))
+    SHDT_MIN_IMPROVEMENT = float(os.getenv("SHDT_MIN_IMPROVEMENT", "0.3"))
+
+    # CDRAF: Critic-Driven Refinement with Agent Feedback
+    CDRAF_MAX_ROUNDS = int(os.getenv("CDRAF_MAX_ROUNDS", "2"))
+
+    # Available strategies
+    OPTIMIZATION_STRATEGIES = ["standard", "dgeo", "shdt", "cdraf"]
+
     # ===== API Retry Configuration =====
     MAX_RETRIES = 3
     RETRY_DELAY = 1  # seconds
@@ -352,12 +414,18 @@ class Config:
     def validate(cls) -> List[str]:
         """Validate configuration and return list of errors"""
         errors = []
-        
+
         if not cls.ANTHROPIC_API_KEY and cls.DEFAULT_PROVIDER == "anthropic":
             errors.append("ANTHROPIC_API_KEY is required when using Anthropic as default provider")
-        
+
         if not cls.GROQ_API_KEY and cls.DEFAULT_PROVIDER == "groq":
             errors.append("GROQ_API_KEY is required when using Groq as default provider")
+
+        if not cls.OPENAI_API_KEY and cls.DEFAULT_PROVIDER == "openai":
+            errors.append("OPENAI_API_KEY is required when using OpenAI as default provider")
+
+        if not cls.GEMINI_API_KEY and cls.DEFAULT_PROVIDER == "gemini":
+            errors.append("GEMINI_API_KEY is required when using Gemini as default provider")
         
         if cls.CONSENSUS_THRESHOLD < 0 or cls.CONSENSUS_THRESHOLD > 1:
             errors.append("CONSENSUS_THRESHOLD must be between 0 and 1")

@@ -23,7 +23,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   return (
     <Card padding="md">
       <div className="space-y-2">
-        <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="prompt" className="block text-sm font-medium text-gray-300">
           Prompt
         </label>
         <textarea
@@ -33,7 +33,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           placeholder={placeholder}
           disabled={disabled}
           rows={8}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-3 py-2 bg-gray-800 text-white border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed placeholder-gray-500"
         />
         <div className="flex justify-between items-center text-sm">
           <div>
@@ -41,7 +41,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
               <span className="text-red-600">{validationError}</span>
             )}
           </div>
-          <div className={`${isOverLimit ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+          <div className={`${isOverLimit ? 'text-red-400 font-medium' : 'text-gray-400'}`}>
             {charCount.toLocaleString()} / {VALIDATION_LIMITS.MAX_PROMPT_LENGTH.toLocaleString()} characters
           </div>
         </div>

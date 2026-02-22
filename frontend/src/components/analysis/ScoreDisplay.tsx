@@ -17,7 +17,7 @@ export const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 
   return (
     <Card padding="lg" className="text-center">
-      <h3 className="text-sm font-medium text-gray-600 mb-4">{title}</h3>
+      <h3 className="text-sm font-medium text-gray-300 mb-4">{title}</h3>
 
       {/* Circular progress indicator */}
       <div className="relative inline-flex items-center justify-center">
@@ -58,7 +58,7 @@ export const ScoreDisplay: React.FC<ScoreDisplayProps> = ({
 
       {/* Score interpretation */}
       <div className="mt-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-300">
           {score >= 8 && 'Excellent! Your prompt is well-structured.'}
           {score >= 6 && score < 8 && 'Good prompt with minor improvements possible.'}
           {score >= 4 && score < 6 && 'Fair prompt. Several issues need attention.'}

@@ -2,9 +2,12 @@
 Analyze Route - POST /api/analyze
 
 Analyzes a prompt for defects using the multi-agent system.
+Includes SSE streaming endpoint for real-time progress.
 """
 
+import json
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 from typing import Dict, Any
 
 from ..models import AnalyzeRequest
@@ -57,13 +60,15 @@ async def analyze_prompt(request: AnalyzeRequest) -> Dict[str, Any]:
         # Build context from request
         context = {
             "task_type": request.task_type,
-            "domain": request.domain
+            "domain": request.domain,
+            "provider": request.provider
         }
 
         # Run multi-agent analysis
         result = await orchestrator.analyze_with_agents(
             prompt=request.prompt,
-            context=context
+            context=context,
+            user_issues=request.user_issues
         )
 
         # Filter agent results if not requested
@@ -98,3 +103,43 @@ async def analyze_prompt(request: AnalyzeRequest) -> Dict[str, Any]:
                 "type": type(e).__name__
             }
         )
+
+
+@router.post("/analyze/stream")
+async def analyze_prompt_stream(request: AnalyzeRequest):
+    """
+    Stream analysis results via SSE as each agent completes.
+
+    Events:
+    - agent_start: {"type": "agent_start", "agent": "ClarityAgent", "focus_area": "..."}
+    - agent_complete: {"type": "agent_complete", "agent": "ClarityAgent", "score": 7.5, ...}
+    - final: {"type": "final", "overall_score": ..., "defects": [...], ...}
+    """
+    orchestrator = get_orchestrator()
+    context = {
+        "task_type": request.task_type,
+        "domain": request.domain,
+        "provider": request.provider
+    }
+
+    async def event_generator():
+        try:
+            async for event in orchestrator.analyze_with_agents_streaming(
+                prompt=request.prompt,
+                context=context,
+                user_issues=request.user_issues
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"Streaming analysis failed: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )

@@ -10,7 +10,8 @@ def get_optimization_prompt(
     original_prompt: str,
     defects: List[Dict[str, Any]],
     techniques: List[Dict[str, Any]],
-    context: Dict[str, Any]
+    context: Dict[str, Any],
+    user_issues: Optional[List[str]] = None
 ) -> str:
     """
     Generate meta-prompt for LLM-based prompt optimization
@@ -23,6 +24,7 @@ def get_optimization_prompt(
         defects: List of detected defects with their details
         techniques: List of techniques to apply (used for tracking only)
         context: Task type, domain, and other context
+        user_issues: Optional user-reported issues to prioritize
 
     Returns:
         Optimization prompt string
@@ -40,13 +42,26 @@ def get_optimization_prompt(
 
     improvements_text = "\n".join(improvement_instructions) if improvement_instructions else "General clarity and structure improvements needed."
 
+    # Build user issues section if provided
+    user_issues_section = ""
+    if user_issues:
+        issues_list = "\n".join(f"- {issue}" for issue in user_issues)
+        user_issues_section = f"""
+
+USER-REPORTED ISSUES (PRIORITIZE THESE):
+The user has specifically reported these problems with their prompt:
+{issues_list}
+
+Address these user-reported issues FIRST before applying general improvements.
+"""
+
     return f"""Rewrite and improve the following prompt. Your output must be a complete, ready-to-use prompt.
 
 ORIGINAL PROMPT TO IMPROVE:
 \"\"\"
 {original_prompt}
 \"\"\"
-
+{user_issues_section}
 IMPROVEMENTS TO MAKE:
 {improvements_text}
 
@@ -414,6 +429,350 @@ Return as JSON:
 Respond ONLY with the JSON object."""
 
 
+# ============================================================
+# SHDT - Scored History with Defect Trajectories
+# ============================================================
+
+def get_shdt_optimization_prompt(
+    original_prompt: str,
+    trajectory: List[Dict[str, Any]],
+    remaining_defects: List[Dict[str, Any]],
+    context: Dict[str, Any]
+) -> str:
+    """
+    Generate SHDT meta-prompt that includes full defect trajectory history.
+    The LLM can see which changes caused which improvements (causal insight).
+
+    Args:
+        original_prompt: The original prompt
+        trajectory: List of {version, prompt, score, defects_fixed, defects_remaining, improvement}
+        remaining_defects: Defects still to be fixed
+        context: Task type, domain context
+
+    Returns:
+        SHDT optimization prompt string
+    """
+    task_type = context.get("task_type", "general")
+    domain = context.get("domain", "general")
+
+    # Build trajectory history
+    history_lines = []
+    for entry in trajectory:
+        version = entry.get("version", 0)
+        score = entry.get("score", 0)
+        fixed = entry.get("defects_fixed", [])
+        remaining = entry.get("defects_remaining", [])
+        improvement = entry.get("improvement", 0)
+
+        fixed_text = ", ".join(fixed) if fixed else "none"
+        remaining_text = ", ".join(remaining) if remaining else "none"
+
+        if version == 0:
+            history_lines.append(
+                f"  v{version} (score {score:.1f}): Original prompt. "
+                f"Defects detected: {remaining_text}"
+            )
+        else:
+            history_lines.append(
+                f"  v{version} (score {score:.1f}, +{improvement:.1f}): "
+                f"Fixed: {fixed_text}. Remaining: {remaining_text}"
+            )
+
+    trajectory_text = "\n".join(history_lines)
+
+    # Build remaining defects with remediations
+    defect_instructions = []
+    for d in remaining_defects:
+        name = d.get("name", "Unknown")
+        remediation = d.get("remediation", d.get("description", ""))
+        defect_instructions.append(f"  - {d.get('id', '?')} ({name}): {remediation}")
+    defects_text = "\n".join(defect_instructions) if defect_instructions else "  No specific defects remaining."
+
+    # Get the latest prompt version
+    latest_prompt = trajectory[-1].get("prompt", original_prompt) if trajectory else original_prompt
+
+    return f"""You are optimizing a prompt through iterative improvement. Study the optimization history below to understand what changes helped and what still needs fixing.
+
+OPTIMIZATION HISTORY (learn from what worked):
+{trajectory_text}
+
+CURRENT PROMPT (latest version):
+\"\"\"
+{latest_prompt}
+\"\"\"
+
+REMAINING DEFECTS TO FIX:
+{defects_text}
+
+CONTEXT: This is for {task_type} tasks in the {domain} domain.
+
+INSTRUCTIONS:
+1. Study the history to understand which types of changes improved the score
+2. Apply similar successful patterns to fix the remaining defects
+3. Output a COMPLETE rewritten prompt - not a template
+4. KEEP all specific content from the current version
+5. NEVER use placeholders like [TASK], [ROLE], [INPUT] etc.
+6. The rewritten prompt must be similar length or longer than the current version
+
+Return ONLY this JSON:
+{{
+    "optimized_prompt": "the complete improved prompt here",
+    "changes_made": [
+        {{
+            "change": "what was improved",
+            "target_defect": "which defect this addresses",
+            "reason": "why this change helps based on trajectory patterns"
+        }}
+    ],
+    "expected_improvement": "brief explanation of expected score change"
+}}"""
+
+
+# ============================================================
+# CDRAF - Critic-Driven Refinement with Agent Feedback
+# ============================================================
+
+def get_cdraf_critique_refinement_prompt(
+    optimized_prompt: str,
+    agent_feedback: List[Dict[str, Any]],
+    context: Dict[str, Any]
+) -> str:
+    """
+    Generate CDRAF meta-prompt that uses multi-agent critique for directed refinement.
+
+    Args:
+        optimized_prompt: The prompt to refine
+        agent_feedback: List of {agent, focus_area, issues: [{defect_id, name, description, confidence}]}
+        context: Task type, domain context
+
+    Returns:
+        CDRAF refinement prompt string
+    """
+    task_type = context.get("task_type", "general")
+    domain = context.get("domain", "general")
+
+    # Build agent feedback section
+    feedback_lines = []
+    issue_count = 0
+    for feedback in agent_feedback:
+        agent_name = feedback.get("agent", "Unknown Agent")
+        focus = feedback.get("focus_area", "")
+        issues = feedback.get("issues", [])
+
+        if issues:
+            for issue in issues:
+                issue_count += 1
+                confidence = issue.get("confidence", 0)
+                name = issue.get("name", "Unknown")
+                remediation = issue.get("remediation", issue.get("description", ""))
+                feedback_lines.append(
+                    f"  {issue_count}. [{agent_name}] {name} (confidence: {confidence:.0%})\n"
+                    f"     Fix: {remediation}"
+                )
+        else:
+            feedback_lines.append(f"  [{agent_name}] No issues found in {focus}")
+
+    feedback_text = "\n".join(feedback_lines)
+
+    return f"""Your optimized prompt was reviewed by 4 specialist agents. Address their feedback to produce a refined version.
+
+CURRENT PROMPT:
+\"\"\"
+{optimized_prompt}
+\"\"\"
+
+SPECIALIST AGENT FEEDBACK (highest priority first):
+{feedback_text}
+
+CONTEXT: This is for {task_type} tasks in the {domain} domain.
+
+RULES:
+1. Address each numbered issue from the agent feedback
+2. Output a COMPLETE refined prompt - not a template
+3. KEEP all existing content that wasn't flagged
+4. NEVER use placeholders like [TASK], [ROLE], [INPUT] etc.
+5. The refined prompt should be similar length or longer
+
+Return ONLY this JSON:
+{{
+    "refined_prompt": "the complete refined prompt here",
+    "issues_addressed": [
+        {{
+            "issue_number": 1,
+            "agent": "which agent raised this",
+            "fix_applied": "what was changed to address this"
+        }}
+    ],
+    "issues_not_addressed": ["any issues that couldn't be reasonably fixed and why"]
+}}"""
+
+
+# ============================================================
+# DGEO - Defect-Guided Evolutionary Optimization
+# ============================================================
+
+def get_dgeo_variant_prompt(
+    original_prompt: str,
+    target_defects: List[Dict[str, Any]],
+    variant_focus: str,
+    context: Dict[str, Any]
+) -> str:
+    """
+    Generate a prompt variant targeting specific defects.
+
+    Args:
+        original_prompt: The original prompt
+        target_defects: Specific defects this variant should fix
+        variant_focus: Description of what this variant focuses on
+        context: Task type, domain context
+
+    Returns:
+        DGEO variant generation prompt
+    """
+    task_type = context.get("task_type", "general")
+    domain = context.get("domain", "general")
+
+    defect_instructions = []
+    for d in target_defects:
+        name = d.get("name", "Unknown")
+        remediation = d.get("remediation", d.get("description", ""))
+        defect_instructions.append(f"  - {name}: {remediation}")
+    defects_text = "\n".join(defect_instructions) if defect_instructions else "  General improvements"
+
+    return f"""Rewrite the following prompt to specifically fix the targeted issues. Focus on: {variant_focus}
+
+ORIGINAL PROMPT:
+\"\"\"
+{original_prompt}
+\"\"\"
+
+ISSUES TO FIX IN THIS VARIANT:
+{defects_text}
+
+CONTEXT: This is for {task_type} tasks in the {domain} domain.
+
+RULES:
+1. Output a COMPLETE rewritten prompt
+2. Focus specifically on fixing the listed issues
+3. KEEP all content not related to the issues
+4. NEVER use placeholders like [TASK], [ROLE], [INPUT] etc.
+5. Must be ready to copy-paste and use immediately
+
+Return ONLY this JSON:
+{{
+    "variant_prompt": "the complete rewritten prompt here",
+    "fixes_applied": ["brief description of each fix"]
+}}"""
+
+
+def get_dgeo_crossover_prompt(
+    variant_a: str,
+    variant_b: str,
+    strengths_a: str,
+    strengths_b: str,
+    context: Dict[str, Any]
+) -> str:
+    """
+    Generate a crossover prompt combining the best of two variants.
+
+    Args:
+        variant_a: First parent variant
+        variant_b: Second parent variant
+        strengths_a: What variant A does well
+        strengths_b: What variant B does well
+        context: Task type, domain context
+
+    Returns:
+        DGEO crossover prompt
+    """
+    task_type = context.get("task_type", "general")
+    domain = context.get("domain", "general")
+
+    return f"""Combine the best aspects of two prompt variants into a single improved version.
+
+VARIANT A (excels at {strengths_a}):
+\"\"\"
+{variant_a}
+\"\"\"
+
+VARIANT B (excels at {strengths_b}):
+\"\"\"
+{variant_b}
+\"\"\"
+
+INSTRUCTION: Create a new prompt that combines:
+- The {strengths_a} improvements from Variant A
+- The {strengths_b} improvements from Variant B
+
+CONTEXT: This is for {task_type} tasks in the {domain} domain.
+
+RULES:
+1. Output a COMPLETE prompt combining both variants' strengths
+2. Do not lose any improvement from either variant
+3. NEVER use placeholders like [TASK], [ROLE], [INPUT] etc.
+4. Must be ready to copy-paste and use immediately
+5. Resolve any conflicts by keeping whichever version is clearer
+
+Return ONLY this JSON:
+{{
+    "crossover_prompt": "the combined prompt here",
+    "from_variant_a": ["improvements kept from A"],
+    "from_variant_b": ["improvements kept from B"]
+}}"""
+
+
+def get_dgeo_mutation_prompt(
+    prompt: str,
+    remaining_defects: List[Dict[str, Any]],
+    context: Dict[str, Any]
+) -> str:
+    """
+    Generate a mutation prompt that applies targeted defect remediations.
+
+    Args:
+        prompt: Current prompt to mutate
+        remaining_defects: Defects to fix via mutation
+        context: Task type, domain context
+
+    Returns:
+        DGEO mutation prompt
+    """
+    task_type = context.get("task_type", "general")
+    domain = context.get("domain", "general")
+
+    defect_instructions = []
+    for d in remaining_defects:
+        name = d.get("name", "Unknown")
+        remediation = d.get("remediation", d.get("description", ""))
+        defect_instructions.append(f"  - {name}: {remediation}")
+    defects_text = "\n".join(defect_instructions) if defect_instructions else "  Minor general improvements"
+
+    return f"""Make targeted improvements to this prompt to fix the remaining issues.
+
+CURRENT PROMPT:
+\"\"\"
+{prompt}
+\"\"\"
+
+REMAINING ISSUES TO FIX:
+{defects_text}
+
+CONTEXT: This is for {task_type} tasks in the {domain} domain.
+
+RULES:
+1. Make minimal, targeted changes - do not rewrite unnecessarily
+2. Fix the listed issues specifically
+3. KEEP everything that is already working well
+4. NEVER use placeholders like [TASK], [ROLE], [INPUT] etc.
+5. Output the COMPLETE prompt with fixes applied
+
+Return ONLY this JSON:
+{{
+    "mutated_prompt": "the complete prompt with targeted fixes",
+    "mutations_applied": ["brief description of each targeted fix"]
+}}"""
+
+
 # Export all functions
 __all__ = [
     "get_optimization_prompt",
@@ -422,5 +781,10 @@ __all__ = [
     "get_style_optimization_prompt",
     "get_task_optimization_prompt",
     "get_safety_optimization_prompt",
-    "get_refinement_suggestions_prompt"
+    "get_refinement_suggestions_prompt",
+    "get_shdt_optimization_prompt",
+    "get_cdraf_critique_refinement_prompt",
+    "get_dgeo_variant_prompt",
+    "get_dgeo_crossover_prompt",
+    "get_dgeo_mutation_prompt"
 ]

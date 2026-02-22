@@ -1,15 +1,16 @@
 // TypeScript types for prompt engineering techniques
 
-export enum TechniqueCategory {
-  ZERO_SHOT = 'zero_shot',
-  FEW_SHOT = 'few_shot',
-  CHAIN_OF_THOUGHT = 'chain_of_thought',
-  STRUCTURED = 'structured',
-  ROLE_BASED = 'role_based',
-  ITERATIVE = 'iterative',
-  DECOMPOSITION = 'decomposition',
-  CONTEXT_ENHANCEMENT = 'context_enhancement'
-}
+export const TechniqueCategory = {
+  ZERO_SHOT: 'zero_shot',
+  FEW_SHOT: 'few_shot',
+  CHAIN_OF_THOUGHT: 'chain_of_thought',
+  STRUCTURED: 'structured',
+  ROLE_BASED: 'role_based',
+  ITERATIVE: 'iterative',
+  DECOMPOSITION: 'decomposition',
+  CONTEXT_ENHANCEMENT: 'context_enhancement',
+} as const;
+export type TechniqueCategory = typeof TechniqueCategory[keyof typeof TechniqueCategory];
 
 export interface Technique {
   id: string;                    // T001-T015

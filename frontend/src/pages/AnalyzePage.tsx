@@ -7,21 +7,63 @@ import { DefectCard } from '../components/analysis/DefectCard';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { Alert } from '../components/common/Alert';
-import { Loading } from '../components/common/Spinner';
 import { useAnalysis } from '../hooks/useAnalysis';
+import type { AgentStatus } from '../hooks/useAnalysis';
 import type { TaskType, Domain } from '../types/analysis.types';
 import { TASK_TYPES, DOMAINS } from '../types/analysis.types';
+import { LLM_PROVIDERS } from '../types/advanced.types';
+import type { LLMProvider } from '../types/advanced.types';
 import { validatePrompt, getErrorMessage, getErrorTitle, isRetryableError } from '../utils/errorHandlers';
 import { AGENT_ICONS, AGENT_NAMES } from '../utils/constants';
 import { formatScore, formatConfidence, formatProcessingTime, formatCost } from '../utils/formatters';
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+
+const AgentProgressCard: React.FC<{ agent: AgentStatus }> = ({ agent }) => {
+  const icon = AGENT_ICONS[agent.name as keyof typeof AGENT_ICONS] || '🤖';
+  const displayName = AGENT_NAMES[agent.name as keyof typeof AGENT_NAMES] || agent.name;
+
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-300 ${
+      agent.status === 'complete'
+        ? 'bg-green-500/10 border-green-500/30'
+        : agent.status === 'failed'
+        ? 'bg-red-500/10 border-red-500/30'
+        : agent.status === 'running'
+        ? 'bg-blue-500/10 border-blue-500/30 animate-pulse'
+        : 'bg-dark-card border-dark-border opacity-50'
+    }`}>
+      <span className="text-2xl">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-white text-sm">{displayName}</span>
+          {agent.status === 'running' && <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
+          {agent.status === 'complete' && <CheckCircle className="w-4 h-4 text-green-400" />}
+          {agent.status === 'failed' && <XCircle className="w-4 h-4 text-red-400" />}
+        </div>
+        <p className="text-xs text-gray-500">{agent.focusArea}</p>
+      </div>
+      {agent.status === 'complete' && agent.score !== undefined && (
+        <div className="text-right">
+          <div className="text-lg font-bold text-white">{agent.score.toFixed(1)}</div>
+          <div className="text-xs text-gray-400">{agent.defectsCount} defect{agent.defectsCount !== 1 ? 's' : ''}</div>
+        </div>
+      )}
+      {agent.status === 'failed' && (
+        <span className="text-xs text-red-400">Failed</span>
+      )}
+    </div>
+  );
+};
 
 export const AnalyzePage: React.FC = () => {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState('');
   const [taskType, setTaskType] = useState<TaskType>('general');
   const [domain, setDomain] = useState<Domain>('general');
+  const [userIssues, setUserIssues] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<LLMProvider>('groq');
 
-  const { analyzePrompt, isLoading, error, data, reset } = useAnalysis();
+  const { streamAnalyze, isLoading, isStreaming, error, data, agentStatuses, reset } = useAnalysis();
 
   const handleAnalyze = async () => {
     const validationError = validatePrompt(prompt);
@@ -30,14 +72,16 @@ export const AnalyzePage: React.FC = () => {
     }
 
     try {
-      await analyzePrompt({
+      const parsedIssues = userIssues.split('\n').map(s => s.trim()).filter(Boolean);
+      await streamAnalyze({
         prompt,
         task_type: taskType,
         domain,
+        provider: selectedProvider,
         include_agent_breakdown: true,
+        user_issues: parsedIssues.length > 0 ? parsedIssues : undefined,
       });
     } catch (err) {
-      // Error is already set by the hook
       console.error('Analysis error:', err);
     }
   };
@@ -46,15 +90,19 @@ export const AnalyzePage: React.FC = () => {
     setPrompt('');
     setTaskType('general');
     setDomain('general');
+    setUserIssues('');
+    setSelectedProvider('groq');
     reset();
   };
 
   const handleOptimize = () => {
     if (data) {
+      const parsedIssues = userIssues.split('\n').map(s => s.trim()).filter(Boolean);
       navigate('/optimize', {
         state: {
           analysis: data,
-          prompt: prompt
+          prompt: prompt,
+          user_issues: parsedIssues.length > 0 ? parsedIssues : undefined,
         }
       });
     }
@@ -67,8 +115,8 @@ export const AnalyzePage: React.FC = () => {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Analyze Prompt</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-white mb-2">Analyze Prompt</h1>
+          <p className="text-gray-400">
             Analyze your prompt for defects using our multi-agent consensus system.
           </p>
         </div>
@@ -81,9 +129,9 @@ export const AnalyzePage: React.FC = () => {
         />
 
         {/* Options */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           <Card padding="md">
-            <label htmlFor="task-type" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="task-type" className="block text-sm font-medium text-gray-300 mb-2">
               Task Type
             </label>
             <select
@@ -91,7 +139,7 @@ export const AnalyzePage: React.FC = () => {
               value={taskType}
               onChange={(e) => setTaskType(e.target.value as TaskType)}
               disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              className="w-full px-3 py-2 bg-gray-800 text-white border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-700 disabled:text-gray-400"
             >
               {TASK_TYPES.map(type => (
                 <option key={type} value={type}>
@@ -102,7 +150,7 @@ export const AnalyzePage: React.FC = () => {
           </Card>
 
           <Card padding="md">
-            <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="domain" className="block text-sm font-medium text-gray-300 mb-2">
               Domain
             </label>
             <select
@@ -110,7 +158,7 @@ export const AnalyzePage: React.FC = () => {
               value={domain}
               onChange={(e) => setDomain(e.target.value as Domain)}
               disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              className="w-full px-3 py-2 bg-gray-800 text-white border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-700 disabled:text-gray-400"
             >
               {DOMAINS.map(d => (
                 <option key={d} value={d}>
@@ -119,7 +167,50 @@ export const AnalyzePage: React.FC = () => {
               ))}
             </select>
           </Card>
+
+          <Card padding="md">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              LLM Provider
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {LLM_PROVIDERS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedProvider(p.id)}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    selectedProvider === p.id
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-800 text-gray-300 border-gray-600 hover:border-blue-400'
+                  } disabled:opacity-50`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {LLM_PROVIDERS.find(p => p.id === selectedProvider)?.description}
+            </p>
+          </Card>
         </div>
+
+        {/* User Issues (Optional) */}
+        <Card padding="md">
+          <label htmlFor="user-issues" className="block text-sm font-medium text-gray-300 mb-2">
+            Issues You're Facing <span className="text-gray-500">(optional)</span>
+          </label>
+          <textarea
+            id="user-issues"
+            value={userIssues}
+            onChange={(e) => setUserIssues(e.target.value)}
+            disabled={isLoading}
+            placeholder={"e.g., Output is too verbose\nMissing specific examples\nWrong output format"}
+            className="w-full h-24 px-3 py-2 bg-gray-800 text-white border border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-700 disabled:text-gray-400 resize-none placeholder-gray-500 text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Describe problems with your prompt — one per line. These will be prioritized during optimization.
+          </p>
+        </Card>
 
         {/* Actions */}
         <div className="flex gap-4">
@@ -138,19 +229,20 @@ export const AnalyzePage: React.FC = () => {
           )}
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
+        {/* Streaming Progress — Live Agent Cards */}
+        {isStreaming && (
           <Card padding="lg">
-            <Loading
-              message="Running multi-agent analysis..."
-              subMessage="4 specialized agents are analyzing your prompt..."
-            />
-            <div className="mt-6 space-y-2 text-sm text-gray-600">
-              <p>• 👁️ Clarity Agent: Checking specification & intent</p>
-              <p>• 📋 Structure Agent: Analyzing structure & formatting</p>
-              <p>• 🧠 Context Agent: Evaluating context & memory</p>
-              <p>• 🛡️ Security Agent: Running security scan</p>
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Multi-Agent Analysis in Progress
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {agentStatuses.map((agent) => (
+                <AgentProgressCard key={agent.name} agent={agent} />
+              ))}
             </div>
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              Results stream in as each agent completes its analysis
+            </p>
           </Card>
         )}
 
@@ -185,26 +277,26 @@ export const AnalyzePage: React.FC = () => {
               </div>
               <div className="md:col-span-2">
                 <Card padding="lg">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Analysis Summary</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">Analysis Summary</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Overall Score:</span>
+                      <span className="text-gray-400">Overall Score:</span>
                       <span className="font-semibold">{formatScore(data.overall_score)} / 10</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Defects Found:</span>
+                      <span className="text-gray-400">Defects Found:</span>
                       <span className="font-semibold">{data.defects.length}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Consensus Level:</span>
+                      <span className="text-gray-400">Consensus Level:</span>
                       <span className="font-semibold">{formatConfidence(data.consensus)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Processing Time:</span>
+                      <span className="text-gray-400">Processing Time:</span>
                       <span className="font-semibold">{formatProcessingTime(data.metadata.processing_time_ms)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Cost:</span>
+                      <span className="text-gray-400">Cost:</span>
                       <span className="font-semibold">{formatCost(data.metadata.total_cost)}</span>
                     </div>
                   </div>
@@ -225,7 +317,7 @@ export const AnalyzePage: React.FC = () => {
             {/* Defects */}
             {data.defects.length > 0 ? (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                <h2 className="text-2xl font-bold text-white mb-4">
                   Detected Defects ({data.defects.length})
                 </h2>
                 <div className="space-y-4">
@@ -243,7 +335,7 @@ export const AnalyzePage: React.FC = () => {
             {/* Agent Breakdown */}
             {data.agent_results && (
               <Card padding="lg">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Agent Breakdown</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Agent Breakdown</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   {Object.entries(data.agent_results).map(([agentName, result]) => (
                     <Card key={agentName} padding="md" shadow="sm">
@@ -251,20 +343,20 @@ export const AnalyzePage: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{AGENT_ICONS[agentName as keyof typeof AGENT_ICONS]}</span>
                           <div>
-                            <h4 className="font-semibold text-gray-900">
+                            <h4 className="font-semibold text-white">
                               {AGENT_NAMES[agentName as keyof typeof AGENT_NAMES]}
                             </h4>
                             <p className="text-xs text-gray-500">{result.focus_area}</p>
                           </div>
                         </div>
-                        <span className="text-lg font-bold text-blue-600">
+                        <span className="text-lg font-bold text-blue-400">
                           {formatScore(result.score)}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 mb-2">
+                      <p className="text-xs text-gray-400 mb-2">
                         Found {result.defects.length} defect(s) · Confidence: {formatConfidence(result.confidence)}
                       </p>
-                      <p className="text-sm text-gray-700">{result.summary}</p>
+                      <p className="text-sm text-gray-300">{result.summary}</p>
                     </Card>
                   ))}
                 </div>

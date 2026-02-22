@@ -18,61 +18,63 @@ class ResponseParseError(Exception):
 
 def extract_json_from_markdown(text: str) -> str:
     """
-    Extract JSON content from markdown code fences
-    
-    LLMs often wrap JSON in ```json ... ``` blocks. This function extracts the content.
-    
-    Args:
-        text: Text that may contain markdown-wrapped JSON
-    
-    Returns:
-        Extracted JSON string (or original text if no fences found)
-    
-    Examples:
-        ```json
-        {"key": "value"}
-        ```
-        -> {"key": "value"}
+    Extract JSON content from markdown code fences.
+
+    LLMs (especially Gemini) often wrap JSON in ```json ... ``` blocks.
+    This function robustly extracts the content, handling:
+    - Standard ```json\\n...\\n``` fences
+    - Missing closing fences (truncated responses)
+    - \\r\\n line endings (Windows)
+    - No newline between ```json and content
     """
-    # Pattern 1: ```json ... ```
-    json_fence_pattern = r'```json\s*\n(.*?)\n```'
+    text = text.strip()
+
+    # Pattern 1: ```json ... ``` (flexible whitespace, handles \r\n)
+    json_fence_pattern = r'```json\s*(.*?)\s*```'
     match = re.search(json_fence_pattern, text, re.DOTALL | re.IGNORECASE)
-    
-    if match:
-        logger.debug("Extracted JSON from ```json fence")
-        return match.group(1).strip()
-    
-    # Pattern 2: ``` ... ``` (generic code fence)
-    generic_fence_pattern = r'```\s*\n(.*?)\n```'
-    match = re.search(generic_fence_pattern, text, re.DOTALL)
-    
     if match:
         content = match.group(1).strip()
-        # Only return if it looks like JSON
+        if content:
+            logger.debug("Extracted JSON from ```json fence")
+            return content
+
+    # Pattern 2: ```json without closing ``` (truncated response)
+    if re.match(r'^```json', text, re.IGNORECASE):
+        content = re.sub(r'^```json\s*', '', text, flags=re.IGNORECASE).strip()
+        if content.endswith('```'):
+            content = content[:-3].strip()
+        if content.startswith('{') or content.startswith('['):
+            logger.debug("Extracted JSON from unclosed ```json fence")
+            return content
+
+    # Pattern 3: ``` ... ``` (generic code fence)
+    generic_fence_pattern = r'```\s*(.*?)\s*```'
+    match = re.search(generic_fence_pattern, text, re.DOTALL)
+    if match:
+        content = match.group(1).strip()
         if content.startswith('{') or content.startswith('['):
             logger.debug("Extracted JSON from generic ``` fence")
             return content
-    
-    # Pattern 3: Look for JSON object/array anywhere in text
-    # Find first { or [ and try to extract from there
+
+    # Pattern 4: Look for JSON object/array anywhere in text
     json_start = -1
     for i, char in enumerate(text):
         if char in ['{', '[']:
             json_start = i
             break
-    
+
     if json_start >= 0:
-        # Try to find matching closing brace/bracket
         potential_json = text[json_start:].strip()
+        # Remove trailing ``` if present
+        if potential_json.endswith('```'):
+            potential_json = potential_json[:-3].strip()
         try:
-            # Attempt to parse - if successful, we found valid JSON
             json.loads(potential_json)
             logger.debug("Extracted raw JSON from text")
             return potential_json
         except json.JSONDecodeError:
             pass
-    
-    # No extraction needed - return original
+
     return text.strip()
 
 

@@ -1,0 +1,552 @@
+[
+  {
+    "id": "B001",
+    "prompt": "Write a sorting function",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D008"],
+    "human_score": 3.0,
+    "category": "code_generation",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B002",
+    "prompt": "Make a website",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D005", "D008", "D011"],
+    "human_score": 2.0,
+    "category": "code_generation",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B003",
+    "prompt": "Write Python code that takes a list of student records (name, grade, subject) and generates a report card. Handle edge cases like missing data. Output as formatted text.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D002", "D008"],
+    "human_score": 6.5,
+    "category": "code_generation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B004",
+    "prompt": "Create a REST API endpoint for user authentication. Use best practices.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D005", "D023"],
+    "human_score": 4.0,
+    "category": "code_generation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B005",
+    "prompt": "Write code to process data",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D008", "D011"],
+    "human_score": 2.5,
+    "category": "code_generation",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B006",
+    "prompt": "You are a senior Python developer. Write a function called `merge_sorted_lists` that takes two sorted lists of integers and returns a single sorted list. The function should have O(n+m) time complexity. Include type hints, docstring, and handle edge cases (empty lists, None inputs). Return the result, do not print it.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": [],
+    "human_score": 9.0,
+    "category": "code_generation",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B007",
+    "prompt": "Build a machine learning pipeline that handles data preprocessing, feature engineering, model training, and evaluation. Make it production ready.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D009", "D016"],
+    "human_score": 4.5,
+    "category": "code_generation",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B008",
+    "prompt": "Fix this code it doesnt work",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D004", "D011"],
+    "human_score": 1.5,
+    "category": "code_generation",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B009",
+    "prompt": "Write a recursive function to calculate fibonacci numbers. Make it efficient using memoization. Include time complexity analysis in comments.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D008"],
+    "human_score": 7.5,
+    "category": "code_generation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B010",
+    "prompt": "Create a database schema for an e-commerce application with products, users, orders, and reviews. Use PostgreSQL.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D002", "D008"],
+    "human_score": 6.0,
+    "category": "code_generation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B011",
+    "prompt": "Solve this math problem step by step",
+    "task_type": "reasoning",
+    "domain": "mathematics",
+    "expected_defects": ["D001", "D002", "D004", "D011"],
+    "human_score": 2.0,
+    "category": "reasoning",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B012",
+    "prompt": "A train leaves Station A at 9:00 AM traveling at 60 mph. Another train leaves Station B (300 miles away) at 10:00 AM traveling toward Station A at 80 mph. At what time do they meet? Show your reasoning.",
+    "task_type": "reasoning",
+    "domain": "mathematics",
+    "expected_defects": [],
+    "human_score": 8.0,
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B013",
+    "prompt": "Explain why the sky is blue. Be scientific.",
+    "task_type": "reasoning",
+    "domain": "science",
+    "expected_defects": ["D002", "D015"],
+    "human_score": 5.0,
+    "category": "reasoning",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B014",
+    "prompt": "Compare and contrast the economic policies of Keynesianism and monetarism. Analyze their effectiveness during recessions with specific historical examples.",
+    "task_type": "reasoning",
+    "domain": "business",
+    "expected_defects": ["D008", "D015"],
+    "human_score": 7.0,
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B015",
+    "prompt": "Think about the trolley problem",
+    "task_type": "reasoning",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D004", "D015"],
+    "human_score": 2.5,
+    "category": "reasoning",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B016",
+    "prompt": "You are a logic professor. Given the premises: 'All mammals are warm-blooded. All whales are mammals. Some sea creatures are whales.' Determine what valid conclusions can be drawn. Use formal logical notation and explain each inference step. State any assumptions made.",
+    "task_type": "reasoning",
+    "domain": "education",
+    "expected_defects": [],
+    "human_score": 9.0,
+    "category": "reasoning",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B017",
+    "prompt": "Is AI dangerous? Discuss.",
+    "task_type": "reasoning",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D005", "D015"],
+    "human_score": 3.0,
+    "category": "reasoning",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B018",
+    "prompt": "Analyze the time complexity of quicksort in the best, average, and worst cases. Explain why the choice of pivot matters and suggest practical improvements.",
+    "task_type": "reasoning",
+    "domain": "software_engineering",
+    "expected_defects": ["D008"],
+    "human_score": 7.5,
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B019",
+    "prompt": "A patient presents with chest pain, shortness of breath, and elevated troponin levels. What is the differential diagnosis? Outline the initial management steps, prioritized by urgency.",
+    "task_type": "reasoning",
+    "domain": "healthcare",
+    "expected_defects": ["D002"],
+    "human_score": 7.0,
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B020",
+    "prompt": "Prove that the square root of 2 is irrational using proof by contradiction.",
+    "task_type": "reasoning",
+    "domain": "mathematics",
+    "expected_defects": ["D008"],
+    "human_score": 7.0,
+    "category": "reasoning",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B021",
+    "prompt": "Write a story",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": ["D001", "D002", "D015", "D018"],
+    "human_score": 2.0,
+    "category": "creative_writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B022",
+    "prompt": "Write a short horror story set in an abandoned hospital. The protagonist should discover something unexpected in the basement. Include atmospheric descriptions and build tension gradually. Aim for 500-800 words.",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": [],
+    "human_score": 8.0,
+    "category": "creative_writing",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B023",
+    "prompt": "Write a poem about nature. Make it good.",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": ["D001", "D002", "D015", "D018"],
+    "human_score": 3.0,
+    "category": "creative_writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B024",
+    "prompt": "Compose a formal business email to a client explaining a project delay. The delay is due to unexpected technical challenges with the payment integration. The new deadline is 2 weeks later. Maintain professionalism while being transparent. Keep it under 200 words.",
+    "task_type": "creative_writing",
+    "domain": "business",
+    "expected_defects": [],
+    "human_score": 8.5,
+    "category": "creative_writing",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B025",
+    "prompt": "Write a dialogue between two characters who have a secret. Make it interesting and natural.",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": ["D001", "D002", "D015"],
+    "human_score": 4.5,
+    "category": "creative_writing",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B026",
+    "prompt": "Write an engaging product description for a new wireless noise-cancelling headphone targeted at remote workers. Highlight comfort for all-day wear, battery life (30 hours), and microphone quality. Use persuasive language. 100-150 words. Include a call to action.",
+    "task_type": "creative_writing",
+    "domain": "business",
+    "expected_defects": [],
+    "human_score": 8.5,
+    "category": "creative_writing",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B027",
+    "prompt": "Create content for social media",
+    "task_type": "creative_writing",
+    "domain": "business",
+    "expected_defects": ["D001", "D002", "D005", "D008", "D015", "D018"],
+    "human_score": 2.0,
+    "category": "creative_writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B028",
+    "prompt": "Write a children's bedtime story about a brave little fox who helps lost animals find their way home in a magical forest. The story should have a gentle, warm tone with a clear moral about kindness. Include 3-4 animal characters. Approximately 400 words.",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": [],
+    "human_score": 8.0,
+    "category": "creative_writing",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B029",
+    "prompt": "Summarize this article",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D011", "D015"],
+    "human_score": 2.0,
+    "category": "summarization",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B030",
+    "prompt": "Summarize the following research paper abstract in 2-3 sentences for a general audience. Focus on the main finding and its practical implications. Avoid jargon.",
+    "task_type": "summarization",
+    "domain": "science",
+    "expected_defects": ["D011"],
+    "human_score": 7.0,
+    "category": "summarization",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B031",
+    "prompt": "Give me the key points from this text. Be brief.",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D011", "D015"],
+    "human_score": 3.0,
+    "category": "summarization",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B032",
+    "prompt": "You are an executive assistant preparing a briefing document. Summarize the provided quarterly financial report into a 1-page executive summary. Structure it as: Key Metrics (bullet points), Performance Highlights (2-3 sentences), Concerns (bullet points), Outlook (1-2 sentences). Use formal business language.",
+    "task_type": "summarization",
+    "domain": "business",
+    "expected_defects": [],
+    "human_score": 9.0,
+    "category": "summarization",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B033",
+    "prompt": "Read this and tell me what it says in simple words",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D005", "D011", "D015"],
+    "human_score": 2.5,
+    "category": "summarization",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B034",
+    "prompt": "Create a concise summary of the meeting notes below. Organize by: Decisions Made, Action Items (with owners and deadlines), and Open Questions. Maximum 200 words.",
+    "task_type": "summarization",
+    "domain": "business",
+    "expected_defects": ["D011"],
+    "human_score": 7.5,
+    "category": "summarization",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B035",
+    "prompt": "Summarize this legal document highlighting key obligations, deadlines, and liability clauses. Flag any unusual or potentially problematic terms. Use plain language.",
+    "task_type": "summarization",
+    "domain": "legal",
+    "expected_defects": ["D011"],
+    "human_score": 7.0,
+    "category": "summarization",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B036",
+    "prompt": "Condense this 2000-word blog post into a 280-character tweet that captures the main message and includes a hook.",
+    "task_type": "summarization",
+    "domain": "creative",
+    "expected_defects": ["D011"],
+    "human_score": 6.5,
+    "category": "summarization",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B037",
+    "prompt": "What is machine learning?",
+    "task_type": "question_answering",
+    "domain": "software_engineering",
+    "expected_defects": ["D002", "D015"],
+    "human_score": 4.0,
+    "category": "question_answering",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B038",
+    "prompt": "Explain the difference between supervised, unsupervised, and reinforcement learning. For each type, provide: a one-sentence definition, a real-world application example, and when to use it vs the others. Format as a comparison table.",
+    "task_type": "question_answering",
+    "domain": "software_engineering",
+    "expected_defects": [],
+    "human_score": 8.5,
+    "category": "question_answering",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B039",
+    "prompt": "How does photosynthesis work? Explain it like I'm 10 years old, then explain it at a college biology level. Keep each explanation under 100 words.",
+    "task_type": "question_answering",
+    "domain": "science",
+    "expected_defects": [],
+    "human_score": 8.0,
+    "category": "question_answering",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B040",
+    "prompt": "Tell me about climate change",
+    "task_type": "question_answering",
+    "domain": "science",
+    "expected_defects": ["D001", "D002", "D015"],
+    "human_score": 3.0,
+    "category": "question_answering",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B041",
+    "prompt": "What are the SOLID principles in software engineering? For each principle, explain: what it means, why it matters, a code example showing violation, and the corrected version. Use Python.",
+    "task_type": "question_answering",
+    "domain": "software_engineering",
+    "expected_defects": [],
+    "human_score": 8.5,
+    "category": "question_answering",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B042",
+    "prompt": "Help me understand blockchain",
+    "task_type": "question_answering",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D015"],
+    "human_score": 3.5,
+    "category": "question_answering",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B043",
+    "prompt": "What are the pros and cons of microservices vs monolithic architecture? Consider: scalability, complexity, deployment, team size, and debugging. Provide a recommendation for a startup with 5 developers building an e-commerce platform.",
+    "task_type": "question_answering",
+    "domain": "software_engineering",
+    "expected_defects": [],
+    "human_score": 8.0,
+    "category": "question_answering",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B044",
+    "prompt": "Help me with my project",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D004", "D011"],
+    "human_score": 1.5,
+    "category": "general",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B045",
+    "prompt": "You are an IELTS examiner. Evaluate the following essay based on the official IELTS Band Descriptors. Score it in four categories: Task Achievement, Coherence and Cohesion, Lexical Resource, and Grammatical Range and Accuracy. Provide specific feedback with examples from the text. Give an overall band score.",
+    "task_type": "general",
+    "domain": "education",
+    "expected_defects": ["D011"],
+    "human_score": 8.0,
+    "category": "general",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B046",
+    "prompt": "Translate this to French and make it sound natural",
+    "task_type": "translation",
+    "domain": "general",
+    "expected_defects": ["D002", "D011", "D018"],
+    "human_score": 4.0,
+    "category": "general",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B047",
+    "prompt": "Create a study plan for learning data structures and algorithms over 3 months. I can study 2 hours per day. I know basic Python. Target: passing FAANG-level coding interviews. Include weekly topics, resources, and practice problems.",
+    "task_type": "general",
+    "domain": "education",
+    "expected_defects": [],
+    "human_score": 8.0,
+    "category": "general",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B048",
+    "prompt": "Review my resume and give feedback",
+    "task_type": "general",
+    "domain": "business",
+    "expected_defects": ["D001", "D002", "D011", "D015"],
+    "human_score": 2.5,
+    "category": "general",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B049",
+    "prompt": "Classify these customer reviews as positive, negative, or neutral. For each review, also extract the main topic (product quality, shipping, customer service, price) and any specific product mentioned. Output as JSON.",
+    "task_type": "classification",
+    "domain": "business",
+    "expected_defects": ["D011"],
+    "human_score": 7.5,
+    "category": "general",
+    "difficulty": "medium"
+  },
+  {
+    "id": "B050",
+    "prompt": "I need something done quickly",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": ["D001", "D002", "D004", "D011"],
+    "human_score": 1.0,
+    "category": "general",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B051",
+    "prompt": "Design a system",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": ["D001", "D002", "D004", "D005", "D008", "D011"],
+    "human_score": 1.5,
+    "category": "general",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B052",
+    "prompt": "You are a senior software architect. Design a URL shortener service that handles 10 million new URLs per day. Cover: API design (REST endpoints), database schema (with sharding strategy), the shortening algorithm, caching layer (Redis), and analytics tracking. Provide estimated infrastructure costs for AWS. Format your response with clear sections and diagrams described in text.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": [],
+    "human_score": 9.0,
+    "category": "code_generation",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B053",
+    "prompt": "Act as a nutritionist. Create a 7-day meal plan for a vegetarian athlete training for a marathon. Requirements: 2800-3200 calories per day, at least 100g protein, balanced macros. Include specific recipes for breakfast, lunch, dinner, and 2 snacks. List grocery items needed. Consider meal prep efficiency.",
+    "task_type": "general",
+    "domain": "healthcare",
+    "expected_defects": [],
+    "human_score": 8.5,
+    "category": "general",
+    "difficulty": "hard"
+  },
+  {
+    "id": "B054",
+    "prompt": "Write me an essay about something interesting. Make it good and long enough. I need it for school.",
+    "task_type": "creative_writing",
+    "domain": "education",
+    "expected_defects": ["D001", "D002", "D004", "D015", "D018"],
+    "human_score": 2.0,
+    "category": "creative_writing",
+    "difficulty": "easy"
+  },
+  {
+    "id": "B055",
+    "prompt": "Analyze the provided dataset and give insights. Use charts if helpful.",
+    "task_type": "reasoning",
+    "domain": "business",
+    "expected_defects": ["D001", "D002", "D008", "D011"],
+    "human_score": 3.5,
+    "category": "reasoning",
+    "difficulty": "easy"
+  }
+]

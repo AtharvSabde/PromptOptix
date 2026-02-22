@@ -1,20 +1,22 @@
 // TypeScript types for analysis - must match backend Pydantic models exactly
 
-export enum DefectSeverity {
-  CRITICAL = 'critical',
-  HIGH = 'high',
-  MEDIUM = 'medium',
-  LOW = 'low'
-}
+export const DefectSeverity = {
+  CRITICAL: 'critical',
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+} as const;
+export type DefectSeverity = typeof DefectSeverity[keyof typeof DefectSeverity];
 
-export enum DefectCategory {
-  SPECIFICATION_AND_INTENT = 'specification_and_intent',
-  STRUCTURE_AND_FORMATTING = 'structure_and_formatting',
-  CONTEXT_AND_MEMORY = 'context_and_memory',
-  OUTPUT_GUIDANCE = 'output_guidance',
-  EXAMPLES_AND_DEMONSTRATIONS = 'examples_and_demonstrations',
-  SECURITY_AND_SAFETY = 'security_and_safety'
-}
+export const DefectCategory = {
+  SPECIFICATION_AND_INTENT: 'specification_and_intent',
+  STRUCTURE_AND_FORMATTING: 'structure_and_formatting',
+  CONTEXT_AND_MEMORY: 'context_and_memory',
+  OUTPUT_GUIDANCE: 'output_guidance',
+  EXAMPLES_AND_DEMONSTRATIONS: 'examples_and_demonstrations',
+  SECURITY_AND_SAFETY: 'security_and_safety',
+} as const;
+export type DefectCategory = typeof DefectCategory[keyof typeof DefectCategory];
 
 export interface Defect {
   id: string;                    // D001-D028
@@ -85,7 +87,9 @@ export interface AnalyzeRequest {
   prompt: string;                // 10-50,000 chars
   task_type?: string;            // Default: "general"
   domain?: string;               // Default: "general"
+  provider?: string;             // "anthropic" | "groq" | "openai" | "gemini"
   include_agent_breakdown?: boolean;
+  user_issues?: string[];        // User-reported issues with their prompt
 }
 
 // Task types and domains

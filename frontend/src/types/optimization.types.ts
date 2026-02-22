@@ -1,12 +1,13 @@
 // TypeScript types for optimization - must match backend Pydantic models
 
-import { AnalysisResponse } from './analysis.types';
+import type { AnalysisResponse } from './analysis.types';
 
-export enum OptimizationLevel {
-  MINIMAL = 'minimal',
-  BALANCED = 'balanced',
-  AGGRESSIVE = 'aggressive'
-}
+export const OptimizationLevel = {
+  MINIMAL: 'minimal',
+  BALANCED: 'balanced',
+  AGGRESSIVE: 'aggressive',
+} as const;
+export type OptimizationLevel = typeof OptimizationLevel[keyof typeof OptimizationLevel];
 
 export interface TechniqueApplication {
   technique_id: string;          // T001-T015
