@@ -166,9 +166,11 @@ def validate_provider(provider: str) -> str:
         ValidationError: If provider is invalid
     """
     provider = provider.lower()
-    if provider not in ["anthropic", "groq"]:
-        raise ValidationError(f"Invalid provider: '{provider}'. Must be 'anthropic' or 'groq'")
-    
+    valid_providers = ["anthropic", "groq", "openai", "gemini"]
+    if provider not in valid_providers:
+        raise ValidationError(
+            f"Invalid provider: '{provider}'. Must be one of: {', '.join(valid_providers)}"
+        )
     return provider
 
 
@@ -206,7 +208,10 @@ def sanitize_json_output(obj: Any) -> Any:
     elif isinstance(obj, str):
         # Remove potential XSS vectors
         obj = obj.replace('<script>', '').replace('</script>', '')
-        obj = obj.replace('javascript:', '')
+        obj = obj.replace('javascript:', '').replace('vbscript:', '').replace('data:', '')
+        # Strip dangerous event handlers
+        for handler in ['onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur']:
+            obj = re.sub(rf'{handler}\s*=', '', obj, flags=re.IGNORECASE)
         return obj
     else:
         return obj

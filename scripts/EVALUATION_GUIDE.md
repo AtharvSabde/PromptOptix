@@ -29,30 +29,53 @@ Our framework makes 5 core claims (RQ1–RQ5). Without empirical evidence, these
 
 Before running evaluation:
 
-1. **API keys** configured in `.env` (at minimum `GROQ_API_KEY` for free testing)
+1. **API keys** configured in `.env`:
+   - `GEMINI_API_KEY` — for Gemini 3.1 Pro Preview evaluation
+   - `ANTHROPIC_API_KEY` — for Claude Sonnet 4.6 evaluation
+   - `GROQ_API_KEY` — free/fast testing alternative
 2. **Benchmark prompts** in `data/benchmarks/prompts.json` (55 prompts included)
 3. **Dependencies** installed: `pip install -r backend/requirements.txt` (includes scipy)
 4. **Backend** should NOT be running (the script imports services directly)
+
+### Supported Models (2026)
+| Provider | Model ID | Notes |
+|----------|----------|-------|
+| `gemini` | `gemini-3.1-pro-preview` | Default Gemini model (replaces deprecated Gemini 3 Pro) |
+| `anthropic` | `claude-sonnet-4-6` | Default Claude model |
+| `groq` | `llama-3.3-70b-versatile` | Free, fast testing |
+| `openai` | `gpt-4o` | Alternative baseline |
+
+> **Note:** Gemini 3 Pro Preview was deprecated on March 9, 2026. Use `gemini-3.1-pro-preview` instead.
 
 ---
 
 ## Step 1: Prepare Benchmark Dataset
 
-**WHAT:** A collection of 30+ prompts across multiple categories, each with known characteristics.
+**WHAT:** A collection of 55 real-world user prompts across multiple categories, sourced from published datasets.
 
-**WHY:** The Central Limit Theorem requires ~30 samples for parametric statistical tests (t-test, ANOVA) to be valid. Diverse categories ensure we're not overfitting to one task type.
+**WHY:** Using prompts from published, peer-reviewed datasets ensures ecological validity — these are prompts real users actually submitted to LLMs, not synthetic constructs. The n≥30 convention for CLT is a historical rule of thumb, not a strict mathematical requirement; the real constraint is statistical power. We use all 55 prompts for maximum power.
+
+**SOURCES:** Prompts are drawn from three published datasets of real user-LLM interactions:
+
+| Dataset | Source | License | Prompts Used |
+|---------|--------|---------|--------------|
+| **LMSYS Chatbot Arena** | lmsys/chatbot_arena_conversations (HuggingFace) | CC-BY-4.0 (user prompts) | 30 |
+| **LMSYS-Chat-1M** | lmsys/lmsys-chat-1m (HuggingFace) | CC-BY-NC-4.0 | 16 |
+| **WildBench** | allenai/WildBench v2 (HuggingFace) | CC-BY-4.0 | 9 |
+
+> **Why these datasets?** LMSYS Chatbot Arena contains 33K real pairwise conversations with human preference labels (Zheng et al., 2023). LMSYS-Chat-1M contains 1M real user-LLM conversations across 25 models. WildBench contains 1,024 curated tasks from real users designed to test frontier model capabilities (Lin et al., 2024). Together, they cover the full spectrum from terse/underspecified prompts to detailed, well-structured requests. Prompts are extracted via `scripts/pull_benchmark_prompts.py` which is reproducible — anyone can re-run it to regenerate the benchmark from source datasets.
 
 **HOW:** The file `data/benchmarks/prompts.json` contains 55 prompts across 6 categories:
-- Code Generation (11 prompts) — from trivial "Write a sorting function" to complex multi-file tasks
-- Reasoning (11 prompts) — logical puzzles, math, argument analysis
-- Creative Writing (9 prompts) — stories, poetry, marketing copy
-- Question Answering (7 prompts) — factual recall, explanation, comparison
-- Summarization (8 prompts) — document condensation, key point extraction
-- General (9 prompts) — mixed tasks that don't fit one category
+- Code Generation (11 prompts) — from terse "make an api" to detailed multi-component specifications
+- Reasoning (11 prompts) — math, logic, ethics, policy analysis
+- Creative Writing (9 prompts) — stories, business copy, speeches, social media
+- Question Answering (7 prompts) — technical explanations, comparisons, debugging
+- Summarization (8 prompts) — document condensation, meeting notes, executive briefs
+- General (9 prompts) — planning, career advice, learning roadmaps, mixed tasks
 
-Each prompt has: `id`, `prompt`, `category`, `task_type`, `domain`, `expected_defects` (ground truth), `human_score` (manual baseline), `difficulty`.
+Each prompt has: `id`, `prompt`, `category`, `task_type`, `domain`, `expected_defects` (ground truth from Tian et al. taxonomy), `human_score` (manual baseline), `difficulty`, `source` (originating dataset).
 
-**DECISION:** We deliberately include "bad" prompts (human_score 2.0-3.0) alongside decent ones (7.0+) to test the full range. If we only tested bad prompts, improvement would be trivially easy.
+**DECISION:** We deliberately include underspecified prompts (human_score 1.0–3.0) alongside well-crafted ones (7.5+) to test the full quality range. Real-world prompt quality follows a bimodal distribution — many users write minimal prompts while power users write detailed ones. Our benchmark reflects this natural distribution.
 
 ---
 
@@ -206,7 +229,7 @@ Each prompt has: `id`, `prompt`, `category`, `task_type`, `domain`, `expected_de
 
 ## Step 8: Generate Result Tables
 
-The evaluation script generates 6 tables:
+The evaluation script generates up to 7 tables:
 
 | Table | Contents | Maps To |
 |-------|----------|---------|
@@ -216,6 +239,9 @@ The evaluation script generates 6 tables:
 | Table 4 | Per-category breakdown (QA, Code, Summarization, etc.) | Task-specific insights |
 | Table 5 | ANOVA across all strategies | RQ2 (omnibus test) |
 | Table 6 | Technique effectiveness rankings | RQ5 |
+| Table 7 | **Cross-provider comparison** (Gemini 3.1 Pro vs Claude Sonnet 4.6) | Provider generalizability |
+
+> Table 7 is only generated when `--providers` flag specifies multiple providers.
 
 ---
 
@@ -228,7 +254,7 @@ The evaluation script generates 6 tables:
 **HOW:**
 ```bash
 # Full pipeline (baseline for ablation)
-python scripts/run_evaluation.py --strategies unified --limit 10
+python scripts/run_evaluation.py --strategies unified --limit 30 --provider gemini
 
 # Without DGEO: manually set DGEO to skip in optimizer_service.py
 # Without SHDT: manually set SHDT to skip
@@ -246,14 +272,24 @@ This requires manual code changes (commenting out phases in `optimize_unified()`
 python scripts/run_evaluation.py --strategies standard --limit 2 --provider groq
 ```
 
-### Standard Evaluation (all prompts, all strategies)
+### Single-Provider Evaluation — Gemini 3.1 Pro (30 prompts, CLT minimum)
 ```bash
-python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified --provider groq
+python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified --limit 30 --provider gemini
 ```
 
-### Limited Evaluation (10 prompts, all strategies)
+### Single-Provider Evaluation — Claude Sonnet 4.6 (30 prompts, CLT minimum)
 ```bash
-python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified --limit 10 --provider groq
+python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified --limit 30 --provider anthropic
+```
+
+### Cross-Provider Comparison — Gemini vs Claude (all 55 prompts, generates Table 7)
+```bash
+python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified --providers gemini,anthropic
+```
+
+### Full Evaluation (all 55 prompts, all strategies)
+```bash
+python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified --provider gemini
 ```
 
 ### Output

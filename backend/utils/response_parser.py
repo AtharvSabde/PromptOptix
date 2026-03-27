@@ -195,7 +195,7 @@ def extract_code_blocks(text: str, language: Optional[str] = None) -> list:
         List of code block contents
     """
     if language:
-        pattern = f'```{language}\s*\n(.*?)\n```'
+        pattern = rf'```{language}\s*\n(.*?)\n```'
     else:
         pattern = r'```(?:\w+)?\s*\n(.*?)\n```'
     

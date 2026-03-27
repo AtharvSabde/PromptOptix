@@ -170,6 +170,7 @@ class LLMService:
                 temperature=temperature,
                 system=system_prompt if system_prompt else "",
                 messages=messages,
+                timeout=Config.LLM_CALL_TIMEOUT,
                 **kwargs
             )
             
@@ -292,6 +293,7 @@ class LLMService:
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature,
+                timeout=Config.LLM_CALL_TIMEOUT,
                 **kwargs
             )
             

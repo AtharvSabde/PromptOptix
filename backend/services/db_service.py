@@ -410,8 +410,8 @@ def _row_to_dict(row) -> Dict[str, Any]:
 # Auto-initialize database when module is first imported
 try:
     init_db()
-except Exception as e:
-    logger.warning(f"Could not initialize database: {e}")
+except (OSError, sqlite3.Error) as e:
+    logger.error(f"FATAL: Could not initialize database at {DB_PATH}: {e}. History will not be persisted.")
 
 
 # Singleton-style access

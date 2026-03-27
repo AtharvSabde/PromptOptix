@@ -120,8 +120,8 @@ export const HistoryPage: React.FC = () => {
                   <YAxis fontSize={12} />
                   <Tooltip />
                   <Bar dataKey="avgImprovement" name="Avg Improvement" radius={[4, 4, 0, 0]}>
-                    {strategyChartData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
+                    {strategyChartData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -145,8 +145,8 @@ export const HistoryPage: React.FC = () => {
                     outerRadius={80}
                     label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   >
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
                     ))}
                   </Pie>
                   <Tooltip />

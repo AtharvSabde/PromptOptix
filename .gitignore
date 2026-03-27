@@ -325,6 +325,10 @@ tokens.json
 
 # System files
 .fuse_hidden*
+nul
+
+# PDF files (research papers, docs)
+*.pdf
 
 # Temporary office files
 ~$*.doc*
@@ -341,6 +345,5 @@ tokens.json
 frontend/build/
 frontend/dist/
 
-# ===== Documentation Build =====
-docs/build/
-docs/_build/
+# ===== Documentation =====
+docs/

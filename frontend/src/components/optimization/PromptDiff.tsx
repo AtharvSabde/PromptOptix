@@ -25,8 +25,8 @@ export const PromptDiff: React.FC<PromptDiffProps> = ({
             <h4 className="text-sm font-semibold text-gray-300">Original Prompt</h4>
             <span className="text-sm font-bold text-gray-400">{scoreBefore.toFixed(1)}/10</span>
           </div>
-          <div className="bg-red-50 border border-red-100 rounded-lg p-4 max-h-80 overflow-y-auto">
-            <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 max-h-80 overflow-y-auto">
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
               {original}
             </pre>
           </div>
@@ -37,16 +37,16 @@ export const PromptDiff: React.FC<PromptDiffProps> = ({
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold text-gray-300">Optimized Prompt</h4>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-green-600">{scoreAfter.toFixed(1)}/10</span>
+              <span className="text-sm font-bold text-green-400">{scoreAfter.toFixed(1)}/10</span>
               {improvement > 0 && (
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                <span className="text-xs font-medium text-green-400 bg-green-500/20 px-2 py-0.5 rounded">
                   +{improvement.toFixed(1)}
                 </span>
               )}
             </div>
           </div>
-          <div className="bg-green-50 border border-green-100 rounded-lg p-4 max-h-80 overflow-y-auto">
-            <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 max-h-80 overflow-y-auto">
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
               {optimized}
             </pre>
           </div>

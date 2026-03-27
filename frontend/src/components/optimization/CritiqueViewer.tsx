@@ -52,7 +52,7 @@ export const CritiqueViewer: React.FC<CritiqueViewerProps> = ({ rounds }) => {
               return (
                 <div
                   key={critique.agent}
-                  className={`border-l-4 pl-4 py-2 border-${color}-400`}
+                  className="border-l-4 pl-4 py-2"
                   style={{ borderLeftColor: color === 'blue' ? '#60a5fa' : color === 'green' ? '#4ade80' : color === 'purple' ? '#a78bfa' : color === 'red' ? '#f87171' : '#9ca3af' }}
                 >
                   <div className="flex items-center gap-2 mb-1">

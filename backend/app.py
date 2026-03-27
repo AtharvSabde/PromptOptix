@@ -28,8 +28,8 @@ async def lifespan(app: FastAPI):
     """Handle startup and shutdown events"""
     # Startup
     logger.info("Starting PromptOptimizer Pro API")
-    logger.info(f"Debug mode: {Config.FLASK_DEBUG}")
-    logger.info(f"Environment: {Config.FLASK_ENV}")
+    logger.info(f"Debug mode: {Config.DEBUG}")
+    logger.info(f"Environment: {Config.APP_ENV}")
 
     # Check API keys
     if Config.ANTHROPIC_API_KEY:
@@ -91,7 +91,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={
             "error": "Internal server error",
-            "message": str(exc) if Config.FLASK_DEBUG else "An unexpected error occurred",
+            "message": str(exc) if Config.DEBUG else "An unexpected error occurred",
             "type": type(exc).__name__
         }
     )
@@ -128,6 +128,6 @@ if __name__ == "__main__":
         "backend.app:app",
         host=Config.HOST,
         port=Config.PORT,
-        reload=Config.FLASK_DEBUG,
+        reload=Config.DEBUG,
         log_level="info"
     )

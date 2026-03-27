@@ -37,8 +37,7 @@ npm run build
 ### 1. Start Backend
 ```bash
 # From project root
-cd backend
-python app.py
+uvicorn backend.app:app --reload --port 8000
 ```
 
 ### 2. Start Frontend

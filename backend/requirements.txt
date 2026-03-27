@@ -44,7 +44,6 @@ python-json-logger
 colorlog
 
 # ===== Async Support =====
-asyncio
 aiohttp
 
 # ===== Utilities =====

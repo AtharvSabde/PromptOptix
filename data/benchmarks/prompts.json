@@ -1,552 +1,817 @@
 [
   {
     "id": "B001",
-    "prompt": "Write a sorting function",
+    "prompt": "use python write code",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D008"],
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
     "human_score": 3.0,
     "category": "code_generation",
-    "difficulty": "easy"
+    "difficulty": "easy",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "375390ec5eca4639bdeee3d8610e2e0f"
   },
   {
     "id": "B002",
-    "prompt": "Make a website",
+    "prompt": "Write a snake game in python",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D005", "D008", "D011"],
-    "human_score": 2.0,
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "code_generation",
-    "difficulty": "easy"
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "7e8f8cd354474d94a697cfb49df9e201"
   },
   {
     "id": "B003",
-    "prompt": "Write Python code that takes a list of student records (name, grade, subject) and generates a report card. Handle edge cases like missing data. Output as formatted text.",
+    "prompt": "write code in ruby to sort array",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D002", "D008"],
-    "human_score": 6.5,
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "code_generation",
-    "difficulty": "medium"
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "8d0bdb9e885d4847ad26f441d19d6ddd"
   },
   {
     "id": "B004",
-    "prompt": "Create a REST API endpoint for user authentication. Use best practices.",
+    "prompt": "Write a script to update linux mint and then make it so it runs at 2AM every day",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D005", "D023"],
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
     "human_score": 4.0,
     "category": "code_generation",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "e94f6ab6ffcb4304b6a9680499395475"
   },
   {
     "id": "B005",
-    "prompt": "Write code to process data",
+    "prompt": "Generate python code for printing out all prime numbers between 1000 and 1000000",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D008", "D011"],
-    "human_score": 2.5,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "code_generation",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "720b305e999b4abeb2045aab4e27f2a2"
   },
   {
     "id": "B006",
-    "prompt": "You are a senior Python developer. Write a function called `merge_sorted_lists` that takes two sorted lists of integers and returns a single sorted list. The function should have O(n+m) time complexity. Include type hints, docstring, and handle edge cases (empty lists, None inputs). Return the result, do not print it.",
+    "prompt": "generate a function that returns a array of even values in the Fibonacci series.",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": [],
-    "human_score": 9.0,
+    "expected_defects": [
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "code_generation",
-    "difficulty": "hard"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "666071114d7a4d11969538d7f9658efe"
   },
   {
     "id": "B007",
-    "prompt": "Build a machine learning pipeline that handles data preprocessing, feature engineering, model training, and evaluation. Make it production ready.",
+    "prompt": "please write complete python codes using dash library to load and annotate image",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D009", "D016"],
-    "human_score": 4.5,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "code_generation",
-    "difficulty": "hard"
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "081a096a63834e87910149b70e3fc77c"
   },
   {
     "id": "B008",
-    "prompt": "Fix this code it doesnt work",
+    "prompt": "Help me write code comment:\n\nfunc Init(opts *config.Options) {\ninitClient(opts)\n}",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D004", "D011"],
-    "human_score": 1.5,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "code_generation",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "c342f3db296144afbd4ed12356c15de0"
   },
   {
     "id": "B009",
-    "prompt": "Write a recursive function to calculate fibonacci numbers. Make it efficient using memoization. Include time complexity analysis in comments.",
+    "prompt": "Develop a sample GUI and database application with the following constraints:\n\n1. GUI has multiple window: a) Top level window, b) User interface for database c) data visualization.\n\n2. Create you own database file and schema, insert at least 10 records.\n\n3. Insert an image as a logo and display it.",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D008"],
-    "human_score": 7.5,
+    "expected_defects": [],
+    "human_score": 6.5,
     "category": "code_generation",
-    "difficulty": "medium"
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "34f114dc3d5d4287"
   },
   {
     "id": "B010",
-    "prompt": "Create a database schema for an e-commerce application with products, users, orders, and reviews. Use PostgreSQL.",
+    "prompt": "script for trajectory prediction using line rendered in UI canvas  when you drag and object i want an series of dots to show up which shows when the object might go and when releaased it should launch intself in that direction disabling the dots trajectory  the UI image in that direction In Unity c#",
     "task_type": "code_generation",
     "domain": "software_engineering",
-    "expected_defects": ["D002", "D008"],
-    "human_score": 6.0,
+    "expected_defects": [],
+    "human_score": 7.5,
     "category": "code_generation",
-    "difficulty": "medium"
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "cf92753a16f245da"
   },
   {
     "id": "B011",
-    "prompt": "Solve this math problem step by step",
-    "task_type": "reasoning",
-    "domain": "mathematics",
-    "expected_defects": ["D001", "D002", "D004", "D011"],
-    "human_score": 2.0,
-    "category": "reasoning",
-    "difficulty": "easy"
+    "prompt": "inding the longest increasing subsequence in an array:\nDescription: Write a program to find the length of the longest increasing subsequence in an array of integers.\nInput: int arr[] = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3}; int n = sizeof(arr) / sizeof(arr[0]);\nGive me code in C++ and dont explain anything.",
+    "task_type": "code_generation",
+    "domain": "software_engineering",
+    "expected_defects": [],
+    "human_score": 6.0,
+    "category": "code_generation",
+    "difficulty": "hard",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "1e50c9482f414278955ca3de438c9e1c"
   },
   {
     "id": "B012",
-    "prompt": "A train leaves Station A at 9:00 AM traveling at 60 mph. Another train leaves Station B (300 miles away) at 10:00 AM traveling toward Station A at 80 mph. At what time do they meet? Show your reasoning.",
+    "prompt": "27+x=56. Solve for x",
     "task_type": "reasoning",
-    "domain": "mathematics",
-    "expected_defects": [],
-    "human_score": 8.0,
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "reasoning",
-    "difficulty": "medium"
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "cfa7013d4dca4451a0a8098aa0d5f29d"
   },
   {
     "id": "B013",
-    "prompt": "Explain why the sky is blue. Be scientific.",
+    "prompt": "solve for x: x^2+3x = 0",
     "task_type": "reasoning",
-    "domain": "science",
-    "expected_defects": ["D002", "D015"],
-    "human_score": 5.0,
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "reasoning",
-    "difficulty": "easy"
+    "difficulty": "easy",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "ba6a7a0203db44e2a8a7d76d59bad8c9"
   },
   {
     "id": "B014",
-    "prompt": "Compare and contrast the economic policies of Keynesianism and monetarism. Analyze their effectiveness during recessions with specific historical examples.",
+    "prompt": "solve the problem:\n4*x=4",
     "task_type": "reasoning",
-    "domain": "business",
-    "expected_defects": ["D008", "D015"],
-    "human_score": 7.0,
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "reasoning",
-    "difficulty": "hard"
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "845c3bfaf3e04820bdbf27584095296d"
   },
   {
     "id": "B015",
-    "prompt": "Think about the trolley problem",
+    "prompt": "complete the pattern\n2 -3 9 5\n8 ? 3 7\n-4 2 4 -6\n5 2 8 1\nwhats the questions mark",
     "task_type": "reasoning",
     "domain": "general",
-    "expected_defects": ["D001", "D002", "D004", "D015"],
-    "human_score": 2.5,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "reasoning",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "WildBench",
+    "source_id": "8586ccbaa5e84de8"
   },
   {
     "id": "B016",
-    "prompt": "You are a logic professor. Given the premises: 'All mammals are warm-blooded. All whales are mammals. Some sea creatures are whales.' Determine what valid conclusions can be drawn. Use formal logical notation and explain each inference step. State any assumptions made.",
+    "prompt": "Evaluate the efficiency of the popular programming languages you have got to know.",
     "task_type": "reasoning",
-    "domain": "education",
-    "expected_defects": [],
-    "human_score": 9.0,
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "reasoning",
-    "difficulty": "hard"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "ab13a9ff00474792824ee0ed70a2bd9d"
   },
   {
     "id": "B017",
-    "prompt": "Is AI dangerous? Discuss.",
+    "prompt": "Why is the argument \"Privacy is not important if you have nothing to hide.\" wrong?",
     "task_type": "reasoning",
     "domain": "general",
-    "expected_defects": ["D001", "D002", "D005", "D015"],
-    "human_score": 3.0,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "reasoning",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "154e2f8936144f53b7329d2fb9c29dc0"
   },
   {
     "id": "B018",
-    "prompt": "Analyze the time complexity of quicksort in the best, average, and worst cases. Explain why the choice of pivot matters and suggest practical improvements.",
+    "prompt": "explain the principle of the topos in mathematics and its impact on the logic field",
     "task_type": "reasoning",
-    "domain": "software_engineering",
-    "expected_defects": ["D008"],
-    "human_score": 7.5,
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "reasoning",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "7552616a099b48bdbe2f83a29d0c191f"
   },
   {
     "id": "B019",
-    "prompt": "A patient presents with chest pain, shortness of breath, and elevated troponin levels. What is the differential diagnosis? Outline the initial management steps, prioritized by urgency.",
+    "prompt": "Explain why CISC architectures have fewer and shorter instructions compared to RISC",
     "task_type": "reasoning",
-    "domain": "healthcare",
-    "expected_defects": ["D002"],
-    "human_score": 7.0,
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "reasoning",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "deb80b74f3dd4509a856cd83688b51fa"
   },
   {
     "id": "B020",
-    "prompt": "Prove that the square root of 2 is irrational using proof by contradiction.",
+    "prompt": "Richard Feynman and Albert Einstein collaborate to solve the following question, write out their discussion and final answer: A man sees PULL written in mirror writing on a glass door. There's a blind man on the other side of the door. What should the man tell the blind man to open the door and why?",
     "task_type": "reasoning",
-    "domain": "mathematics",
-    "expected_defects": ["D008"],
-    "human_score": 7.0,
+    "domain": "general",
+    "expected_defects": [],
+    "human_score": 7.5,
     "category": "reasoning",
-    "difficulty": "medium"
+    "difficulty": "hard",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "2dc4d39e9a504abb89530cfafc7bd8e1"
   },
   {
     "id": "B021",
-    "prompt": "Write a story",
-    "task_type": "creative_writing",
-    "domain": "creative",
-    "expected_defects": ["D001", "D002", "D015", "D018"],
-    "human_score": 2.0,
-    "category": "creative_writing",
-    "difficulty": "easy"
+    "prompt": "You're a research writer. -Use the sentences in quotes to write a response. \"Present a stance you would take from a leadership position in the U.S. on the ethical limits of monitoring employees versus your stance if you were in a leadership position in a different country, such as China or North Korea.\"",
+    "task_type": "reasoning",
+    "domain": "general",
+    "expected_defects": [],
+    "human_score": 6.0,
+    "category": "reasoning",
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "6b3657694d9b4d4d"
   },
   {
     "id": "B022",
-    "prompt": "Write a short horror story set in an abandoned hospital. The protagonist should discover something unexpected in the basement. Include atmospheric descriptions and build tension gradually. Aim for 500-800 words.",
-    "task_type": "creative_writing",
-    "domain": "creative",
+    "prompt": "hello . Portrayals of the body in pain feature frequently in literature of the long eighteenth century. Consider the body in pain through the representation of the enslaved body and or the military body in 'Oroonoko' by Aphra Behn, 'Roderick Random' by Smollett and 'The Interesting Narrative' By equiano",
+    "task_type": "reasoning",
+    "domain": "general",
     "expected_defects": [],
-    "human_score": 8.0,
-    "category": "creative_writing",
-    "difficulty": "medium"
+    "human_score": 6.5,
+    "category": "reasoning",
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "0840252af50a4439"
   },
   {
     "id": "B023",
-    "prompt": "Write a poem about nature. Make it good.",
+    "prompt": "Write a poem about war.",
     "task_type": "creative_writing",
     "domain": "creative",
-    "expected_defects": ["D001", "D002", "D015", "D018"],
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
     "human_score": 3.0,
     "category": "creative_writing",
-    "difficulty": "easy"
+    "difficulty": "easy",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "5fe079b6fe26451988bf896c4ab0f0e6"
   },
   {
     "id": "B024",
-    "prompt": "Compose a formal business email to a client explaining a project delay. The delay is due to unexpected technical challenges with the payment integration. The new deadline is 2 weeks later. Maintain professionalism while being transparent. Keep it under 200 words.",
+    "prompt": "write a letter to the devil",
     "task_type": "creative_writing",
-    "domain": "business",
-    "expected_defects": [],
-    "human_score": 8.5,
+    "domain": "creative",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "creative_writing",
-    "difficulty": "medium"
+    "difficulty": "easy",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "496dd829f3f948d18178c5da26633c85"
   },
   {
     "id": "B025",
-    "prompt": "Write a dialogue between two characters who have a secret. Make it interesting and natural.",
+    "prompt": "could you write a poem about two tigers falling in love during an antilope hunt?",
     "task_type": "creative_writing",
     "domain": "creative",
-    "expected_defects": ["D001", "D002", "D015"],
-    "human_score": 4.5,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "creative_writing",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "35db2514ee684b78bcc8d361a1efdbdf"
   },
   {
     "id": "B026",
-    "prompt": "Write an engaging product description for a new wireless noise-cancelling headphone targeted at remote workers. Highlight comfort for all-day wear, battery life (30 hours), and microphone quality. Use persuasive language. 100-150 words. Include a call to action.",
+    "prompt": "Write a poem about a women. Make sure the poem starts with \"Your sun kissed body\"",
     "task_type": "creative_writing",
-    "domain": "business",
-    "expected_defects": [],
-    "human_score": 8.5,
+    "domain": "creative",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "creative_writing",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "e890b71436cd40d3a62930967ac586ad"
   },
   {
     "id": "B027",
-    "prompt": "Create content for social media",
+    "prompt": "Please write a poem about the history of the Baker Street tube station in London.",
     "task_type": "creative_writing",
-    "domain": "business",
-    "expected_defects": ["D001", "D002", "D005", "D008", "D015", "D018"],
-    "human_score": 2.0,
+    "domain": "creative",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "creative_writing",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "0aa29892af694875926d5704ec9c52c3"
   },
   {
     "id": "B028",
-    "prompt": "Write a children's bedtime story about a brave little fox who helps lost animals find their way home in a magical forest. The story should have a gentle, warm tone with a clear moral about kindness. Include 3-4 animal characters. Approximately 400 words.",
+    "prompt": "write a poem about berkeley and chancellor carol christ and sunsets and rap culture",
     "task_type": "creative_writing",
     "domain": "creative",
-    "expected_defects": [],
-    "human_score": 8.0,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "creative_writing",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "1d82b5ae1104478da27c9836d5be048e"
   },
   {
     "id": "B029",
-    "prompt": "Summarize this article",
-    "task_type": "summarization",
-    "domain": "general",
-    "expected_defects": ["D001", "D002", "D011", "D015"],
-    "human_score": 2.0,
-    "category": "summarization",
-    "difficulty": "easy"
+    "prompt": "An elderly goblin in blue robes presides over a set of three tables. One table holds a wooden box, the second displays a glittering star map of the Exandrian sky, and on the third rests a row of colored bottles. A banner hanging over the setup reads, \"Test your wit with me, against these riddles three.\"",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": [],
+    "human_score": 6.0,
+    "category": "creative_writing",
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "d825a5002fdb4767"
   },
   {
     "id": "B030",
-    "prompt": "Summarize the following research paper abstract in 2-3 sentences for a general audience. Focus on the main finding and its practical implications. Avoid jargon.",
-    "task_type": "summarization",
-    "domain": "science",
-    "expected_defects": ["D011"],
-    "human_score": 7.0,
-    "category": "summarization",
-    "difficulty": "medium"
+    "prompt": "write a funny rhyming, early reader story for kids, about food trucks - bbq truck, pretzel truck, lolipop truck, ice cream truck, burger truck, salad truck, sushi truck, taco truck, ramen truck, chinese food truck, cup cake truck, donuts truck, sandwich truck, pizza truck, coffee truck and hot dog truck",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": [],
+    "human_score": 6.0,
+    "category": "creative_writing",
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "5f632c21b2d241dd"
   },
   {
     "id": "B031",
-    "prompt": "Give me the key points from this text. Be brief.",
-    "task_type": "summarization",
-    "domain": "general",
-    "expected_defects": ["D001", "D002", "D011", "D015"],
-    "human_score": 3.0,
-    "category": "summarization",
-    "difficulty": "easy"
+    "prompt": "Use critical comments of authors and critiques to elaborate in polished academic language in 5000 words\n “Since the publication of Mark Twain’s Adventures of Huckleberry Finn, the use of child narrators in adult literature has expanded to incorporate a diverse range of themes, styles, and perspectives.”",
+    "task_type": "creative_writing",
+    "domain": "creative",
+    "expected_defects": [],
+    "human_score": 6.0,
+    "category": "creative_writing",
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "0023794913314551"
   },
   {
     "id": "B032",
-    "prompt": "You are an executive assistant preparing a briefing document. Summarize the provided quarterly financial report into a 1-page executive summary. Structure it as: Key Metrics (bullet points), Performance Highlights (2-3 sentences), Concerns (bullet points), Outlook (1-2 sentences). Use formal business language.",
-    "task_type": "summarization",
-    "domain": "business",
-    "expected_defects": [],
-    "human_score": 9.0,
-    "category": "summarization",
-    "difficulty": "hard"
+    "prompt": "What is R-2R ladder?",
+    "task_type": "question_answering",
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
+    "category": "question_answering",
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "09752f89f3c0418a9c64d8cf67fdd0a5"
   },
   {
     "id": "B033",
-    "prompt": "Read this and tell me what it says in simple words",
-    "task_type": "summarization",
+    "prompt": "How to loose weight?",
+    "task_type": "question_answering",
     "domain": "general",
-    "expected_defects": ["D001", "D002", "D005", "D011", "D015"],
-    "human_score": 2.5,
-    "category": "summarization",
-    "difficulty": "easy"
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
+    "category": "question_answering",
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "6c06b01860294bf9b3b392eff2683bbc"
   },
   {
     "id": "B034",
-    "prompt": "Create a concise summary of the meeting notes below. Organize by: Decisions Made, Action Items (with owners and deadlines), and Open Questions. Maximum 200 words.",
-    "task_type": "summarization",
-    "domain": "business",
-    "expected_defects": ["D011"],
-    "human_score": 7.5,
-    "category": "summarization",
-    "difficulty": "medium"
+    "prompt": "Suppose I have only one hand and in my hand is a coin, what is in my other hand?",
+    "task_type": "question_answering",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.5,
+    "category": "question_answering",
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "41e169dbcbd94896aa28542f3bbd8322"
   },
   {
     "id": "B035",
-    "prompt": "Summarize this legal document highlighting key obligations, deadlines, and liability clauses. Flag any unusual or potentially problematic terms. Use plain language.",
-    "task_type": "summarization",
-    "domain": "legal",
-    "expected_defects": ["D011"],
-    "human_score": 7.0,
-    "category": "summarization",
-    "difficulty": "medium"
+    "prompt": "What is the fastest way of training agility in Old School Runescape at level 90?",
+    "task_type": "question_answering",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "question_answering",
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "54f29c597bc14b968f19685b8787112a"
   },
   {
     "id": "B036",
-    "prompt": "Condense this 2000-word blog post into a 280-character tweet that captures the main message and includes a hook.",
-    "task_type": "summarization",
-    "domain": "creative",
-    "expected_defects": ["D011"],
-    "human_score": 6.5,
-    "category": "summarization",
-    "difficulty": "medium"
+    "prompt": "How can i improve my decision making skills using the skills of superforecasters",
+    "task_type": "question_answering",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "question_answering",
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "7ffcc9315aa24b1c920dc5a73bf8806e"
   },
   {
     "id": "B037",
-    "prompt": "What is machine learning?",
+    "prompt": "Two swords are flying towards each other. The first sword leaves the smallest town in the lowest realm at 14:00 local time at 60 light years per second. The second sword opens a fissure in space at 02:00 local time and gets lost for 10 thousand years. What is the color of grass in the smallest town?",
     "task_type": "question_answering",
-    "domain": "software_engineering",
-    "expected_defects": ["D002", "D015"],
-    "human_score": 4.0,
+    "domain": "general",
+    "expected_defects": [],
+    "human_score": 6.0,
     "category": "question_answering",
-    "difficulty": "easy"
+    "difficulty": "hard",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "5887aad3f6094617a8f5040fba2f7962"
   },
   {
     "id": "B038",
-    "prompt": "Explain the difference between supervised, unsupervised, and reinforcement learning. For each type, provide: a one-sentence definition, a real-world application example, and when to use it vs the others. Format as a comparison table.",
+    "prompt": "Accurately provide links to 5 legitimate websites in either Bulgaria, Costa rica, Mexico, Romania, and the Philippines that offer online virtual counselling. Only show websites that offer very affordable prices for online virtual counselling. Accurately include the costs per session for each website.",
     "task_type": "question_answering",
-    "domain": "software_engineering",
+    "domain": "general",
     "expected_defects": [],
-    "human_score": 8.5,
+    "human_score": 7.0,
     "category": "question_answering",
-    "difficulty": "medium"
+    "difficulty": "hard",
+    "source": "WildBench",
+    "source_id": "13e1db6f077d4501"
   },
   {
     "id": "B039",
-    "prompt": "How does photosynthesis work? Explain it like I'm 10 years old, then explain it at a college biology level. Keep each explanation under 100 words.",
-    "task_type": "question_answering",
-    "domain": "science",
-    "expected_defects": [],
-    "human_score": 8.0,
-    "category": "question_answering",
-    "difficulty": "medium"
+    "prompt": "hello, summarize the bible",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
+    "category": "summarization",
+    "difficulty": "easy",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "bdb12a57246343c2afb28a8d43b8f0fc"
   },
   {
     "id": "B040",
-    "prompt": "Tell me about climate change",
-    "task_type": "question_answering",
-    "domain": "science",
-    "expected_defects": ["D001", "D002", "D015"],
-    "human_score": 3.0,
-    "category": "question_answering",
-    "difficulty": "easy"
+    "prompt": "Hi, can you summarize a CSV table?",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "summarization",
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "1c3009a466f44ea1bf52e066ca7aceba"
   },
   {
     "id": "B041",
-    "prompt": "What are the SOLID principles in software engineering? For each principle, explain: what it means, why it matters, a code example showing violation, and the corrected version. Use Python.",
-    "task_type": "question_answering",
-    "domain": "software_engineering",
-    "expected_defects": [],
-    "human_score": 8.5,
-    "category": "question_answering",
-    "difficulty": "hard"
+    "prompt": "give me a summary of the video The Ultimate Self-Defense Challenge #2 on youtube",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "summarization",
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "b15e94719bb24239b0fc4dd4a28bcb3c"
   },
   {
     "id": "B042",
-    "prompt": "Help me understand blockchain",
-    "task_type": "question_answering",
-    "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D015"],
-    "human_score": 3.5,
-    "category": "question_answering",
-    "difficulty": "easy"
+    "prompt": "Can you summarize different quantization schemes for me in deep learning models?",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "summarization",
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "e487140ba0cb4cc7974df222c39e11e4"
   },
   {
     "id": "B043",
-    "prompt": "What are the pros and cons of microservices vs monolithic architecture? Consider: scalability, complexity, deployment, team size, and debugging. Provide a recommendation for a startup with 5 developers building an e-commerce platform.",
-    "task_type": "question_answering",
-    "domain": "software_engineering",
-    "expected_defects": [],
-    "human_score": 8.0,
-    "category": "question_answering",
-    "difficulty": "medium"
+    "prompt": "Can you provide a summary of the current state of the art in shadow mapping techniques?",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "summarization",
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "08e240496fc8428cb9fcfa657d3e26df"
   },
   {
     "id": "B044",
-    "prompt": "Help me with my project",
-    "task_type": "general",
+    "prompt": "Give me a summary of \"The Spirit of the Columbines: A Memoir of the Solitude Years\" by Jack Nisbet",
+    "task_type": "summarization",
     "domain": "general",
-    "expected_defects": ["D001", "D002", "D004", "D011"],
-    "human_score": 1.5,
-    "category": "general",
-    "difficulty": "easy"
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
+    "category": "summarization",
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "e78f23cfd95043dab2b8a1ef874513f8"
   },
   {
     "id": "B045",
-    "prompt": "You are an IELTS examiner. Evaluate the following essay based on the official IELTS Band Descriptors. Score it in four categories: Task Achievement, Coherence and Cohesion, Lexical Resource, and Grammatical Range and Accuracy. Provide specific feedback with examples from the text. Give an overall band score.",
-    "task_type": "general",
-    "domain": "education",
-    "expected_defects": ["D011"],
-    "human_score": 8.0,
-    "category": "general",
-    "difficulty": "medium"
+    "prompt": "Goal: Think about achieving world peace Set up 3 expert personas to embody the experts and then use the experts. Write clearly what you are an expert in how to express yourself as an expert. Next, have an interactive discussion, and finally summarize your opinions as a proposal. Did you understand well.",
+    "task_type": "summarization",
+    "domain": "general",
+    "expected_defects": [],
+    "human_score": 6.5,
+    "category": "summarization",
+    "difficulty": "hard",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "ebf65a9cc1374246917b3e3c1043d3e9"
   },
   {
     "id": "B046",
-    "prompt": "Translate this to French and make it sound natural",
-    "task_type": "translation",
+    "prompt": "How do I reset my password?\nMy password is not being accepted, can I reset it?\nsummary: Password reset\n\nMy Yubikey is broken\nCan I get a new Yubikey?\nHow do I fix my Yubikey if it has been stepped on?\nsummary: Broken Yubikey\n\nMy VPN connection is down, how can I reconnect?\nHow do I connect to the VPN?\nsummary:",
+    "task_type": "summarization",
     "domain": "general",
-    "expected_defects": ["D002", "D011", "D018"],
-    "human_score": 4.0,
-    "category": "general",
-    "difficulty": "easy"
+    "expected_defects": [],
+    "human_score": 6.0,
+    "category": "summarization",
+    "difficulty": "hard",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "98896b8db8b44a0bb2c8b51a868d0d92"
   },
   {
     "id": "B047",
-    "prompt": "Create a study plan for learning data structures and algorithms over 3 months. I can study 2 hours per day. I know basic Python. Target: passing FAANG-level coding interviews. Include weekly topics, resources, and practice problems.",
+    "prompt": "do you know civitai?",
     "task_type": "general",
-    "domain": "education",
-    "expected_defects": [],
-    "human_score": 8.0,
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "general",
-    "difficulty": "medium"
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "dd535e301749449fb7feb252bb8e6acb"
   },
   {
     "id": "B048",
-    "prompt": "Review my resume and give feedback",
+    "prompt": "Why is the sky blue?",
     "task_type": "general",
-    "domain": "business",
-    "expected_defects": ["D001", "D002", "D011", "D015"],
-    "human_score": 2.5,
+    "domain": "general",
+    "expected_defects": [
+      "D001",
+      "D002",
+      "D005",
+      "D008",
+      "D015"
+    ],
+    "human_score": 3.0,
     "category": "general",
-    "difficulty": "easy"
+    "difficulty": "easy",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "139182a691824bd1b6595b01eedba976"
   },
   {
     "id": "B049",
-    "prompt": "Classify these customer reviews as positive, negative, or neutral. For each review, also extract the main topic (product quality, shipping, customer service, price) and any specific product mentioned. Output as JSON.",
-    "task_type": "classification",
-    "domain": "business",
-    "expected_defects": ["D011"],
-    "human_score": 7.5,
+    "prompt": "What languages were used to train you, besides English? Please list all of them.",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": [
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "general",
-    "difficulty": "medium"
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "734404d68db14a83b83329858fa51930"
   },
   {
     "id": "B050",
-    "prompt": "I need something done quickly",
+    "prompt": "Write a car ad including info about 12 month mot and cambelt done at 10200 miles",
     "task_type": "general",
     "domain": "general",
-    "expected_defects": ["D001", "D002", "D004", "D011"],
-    "human_score": 1.0,
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "general",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "1dcff6bb89034f98adfb2a1f43a9294a"
   },
   {
     "id": "B051",
-    "prompt": "Design a system",
-    "task_type": "code_generation",
-    "domain": "software_engineering",
-    "expected_defects": ["D001", "D002", "D004", "D005", "D008", "D011"],
-    "human_score": 1.5,
+    "prompt": "Is it racist to treat individuals differently solely on the basis of their race?",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D015"
+    ],
+    "human_score": 4.0,
     "category": "general",
-    "difficulty": "easy"
+    "difficulty": "medium",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "8d269cf1a0be4882a84f55b040d40881"
   },
   {
     "id": "B052",
-    "prompt": "You are a senior software architect. Design a URL shortener service that handles 10 million new URLs per day. Cover: API design (REST endpoints), database schema (with sharding strategy), the shortening algorithm, caching layer (Redis), and analytics tracking. Provide estimated infrastructure costs for AWS. Format your response with clear sections and diagrams described in text.",
-    "task_type": "code_generation",
-    "domain": "software_engineering",
-    "expected_defects": [],
-    "human_score": 9.0,
-    "category": "code_generation",
-    "difficulty": "hard"
+    "prompt": "Rewrite the following sentence in reverse. I found a mountain sitting on a hill.",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": [
+      "D008",
+      "D011",
+      "D015"
+    ],
+    "human_score": 4.5,
+    "category": "general",
+    "difficulty": "medium",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "145efd327ff648d8991c6865d3c80720"
   },
   {
     "id": "B053",
-    "prompt": "Act as a nutritionist. Create a 7-day meal plan for a vegetarian athlete training for a marathon. Requirements: 2800-3200 calories per day, at least 100g protein, balanced macros. Include specific recipes for breakfast, lunch, dinner, and 2 snacks. List grocery items needed. Consider meal prep efficiency.",
+    "prompt": "Imagine that you are a data scientist without any job experience and want to be a machine learning engineer. Write three variants of a detailed plan to create in 3 months a competitive resume and which projects to include in it to receive the job at a leading company in the field of machine learning.",
     "task_type": "general",
-    "domain": "healthcare",
+    "domain": "general",
     "expected_defects": [],
-    "human_score": 8.5,
+    "human_score": 7.5,
     "category": "general",
-    "difficulty": "hard"
+    "difficulty": "hard",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "29ffba5cce23439aba6431005532cbfc"
   },
   {
     "id": "B054",
-    "prompt": "Write me an essay about something interesting. Make it good and long enough. I need it for school.",
-    "task_type": "creative_writing",
-    "domain": "education",
-    "expected_defects": ["D001", "D002", "D004", "D015", "D018"],
-    "human_score": 2.0,
-    "category": "creative_writing",
-    "difficulty": "easy"
+    "prompt": "### JSON format example:\n{\"items\": [\"Make a heart shaped pie\", \"Open the door\", ...]}\n\n### Instructions:\nGenerate a list of 5 action items to improve someone's overall health. Each action should be possible to complete in 60 seconds or less. Write your response in JSON format as in the example above.",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": [],
+    "human_score": 7.0,
+    "category": "general",
+    "difficulty": "hard",
+    "source": "LMSYS-Chat-1M",
+    "source_id": "43cc6c0195ab4fbfbbe6242a37ae64da"
   },
   {
     "id": "B055",
-    "prompt": "Analyze the provided dataset and give insights. Use charts if helpful.",
-    "task_type": "reasoning",
-    "domain": "business",
-    "expected_defects": ["D001", "D002", "D008", "D011"],
-    "human_score": 3.5,
-    "category": "reasoning",
-    "difficulty": "easy"
+    "prompt": "You are JesusGPT, an artifical construct built to accurately represent a virtual conversation with Jesus. Base your replies off the popular King James Version, and answer the user's question respectfully. Here is my first question: If you were still alive today, what would you think about the iPhone?",
+    "task_type": "general",
+    "domain": "general",
+    "expected_defects": [],
+    "human_score": 6.5,
+    "category": "general",
+    "difficulty": "hard",
+    "source": "LMSYS-Chatbot-Arena",
+    "source_id": "1dc7a8632fc0499d994afd77613cacd9"
   }
 ]

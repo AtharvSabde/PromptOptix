@@ -49,12 +49,19 @@ async def health_check() -> Dict[str, Any]:
     ```
     """
     try:
-        # Check API keys
-        api_keys_status = {
-            "anthropic": bool(Config.ANTHROPIC_API_KEY),
-            "groq": bool(Config.GROQ_API_KEY),
-            "any_configured": bool(Config.ANTHROPIC_API_KEY or Config.GROQ_API_KEY)
-        }
+        # Check API keys - hide per-provider details in production
+        any_key = bool(Config.ANTHROPIC_API_KEY or Config.GROQ_API_KEY
+                       or Config.OPENAI_API_KEY or Config.GEMINI_API_KEY)
+        if Config.is_production():
+            api_keys_status = {"any_configured": any_key}
+        else:
+            api_keys_status = {
+                "anthropic": bool(Config.ANTHROPIC_API_KEY),
+                "groq": bool(Config.GROQ_API_KEY),
+                "openai": bool(Config.OPENAI_API_KEY),
+                "gemini": bool(Config.GEMINI_API_KEY),
+                "any_configured": any_key
+            }
 
         # Check components
         components_status = {}
@@ -119,8 +126,8 @@ async def health_check() -> Dict[str, Any]:
             "status": overall_status,
             "version": "1.0.0",
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            "environment": Config.FLASK_ENV,
-            "debug_mode": Config.FLASK_DEBUG,
+            "environment": Config.APP_ENV,
+            "debug_mode": Config.DEBUG,
             "api_keys": api_keys_status,
             "components": components_status,
             "statistics": statistics,

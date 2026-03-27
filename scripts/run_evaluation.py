@@ -10,7 +10,8 @@ collects metrics, computes statistics, and outputs formatted tables.
 Usage:
     python scripts/run_evaluation.py
     python scripts/run_evaluation.py --strategies standard,dgeo,shdt,cdraf,unified
-    python scripts/run_evaluation.py --limit 10 --provider groq
+    python scripts/run_evaluation.py --limit 30 --provider gemini
+    python scripts/run_evaluation.py --providers gemini,anthropic
     python scripts/run_evaluation.py --output-dir data/evaluation
 """
 
@@ -335,8 +336,8 @@ async def run_single_prompt(
                     processing_time_ms=strat_result.get("processing_time_ms", 0),
                     cost=strat_result.get("cost_after", 0.0),
                 )
-            except Exception:
-                pass  # DB save is best-effort
+            except Exception as db_err:
+                logger.warning(f"DB save failed for {prompt_data['id']} ({strategy}): {db_err}")
         return strategy, strat_result
 
     tasks = [_run_and_save(s) for s in strategies]
@@ -611,68 +612,123 @@ def generate_technique_effectiveness(results: List[Dict]) -> str:
 
 
 # ============================================================
+# Cross-Provider Comparison Table
+# ============================================================
+
+def generate_table7_cross_provider(provider_results: Dict[str, List[Dict]], strategies: List[str]) -> str:
+    """Table 7: Cross-Provider Comparison (Gemini 3.1 Pro vs Claude Sonnet 4.6)"""
+    lines = []
+    lines.append("\n" + "=" * 100)
+    lines.append("  TABLE 7: Cross-Provider Comparison (Score Improvement by Provider & Strategy)")
+    lines.append("=" * 100)
+
+    providers = list(provider_results.keys())
+    header = f"  {'Strategy':<12}"
+    for prov in providers:
+        header += f"  {'Avg Improve':>12}({'N':>3})  {'Cohen d':>8}  {'p-val':>8}  "
+        header = header[:len(header) - 2] + f"[{prov[:10]}]"
+    lines.append(header)
+
+    # Build proper header
+    col_width = 38
+    header2 = f"  {'Strategy':<12}"
+    for prov in providers:
+        header2 += f"  {prov[:col_width]:<{col_width}}"
+    lines.append(f"  {'Strategy':<12}" + "".join(f"  {p:<38}" for p in providers))
+    sub = f"  {'':<12}"
+    for _ in providers:
+        sub += "  " + f"{'Avg±SD':>10}  {'N':>4}  {'p-val':>8}  {'d':>6}"
+    lines.append(sub)
+    lines.append("  " + "-" * (12 + len(providers) * 40))
+
+    for strat in strategies:
+        row = f"  {strat:<12}"
+        for prov in providers:
+            results = provider_results[prov]
+            before_list = []
+            after_list = []
+            for r in results:
+                s = r["strategies"].get(strat, {})
+                if s.get("status") != "success":
+                    continue
+                before_list.append(r["baseline"]["score"])
+                after_list.append(s.get("score_after", 0.0))
+
+            if len(before_list) < 2:
+                row += f"  {'N/A':>10}  {'':>4}  {'':>8}  {'':>6}"
+                continue
+
+            improvements = [a - b for a, b in zip(after_list, before_list)]
+            avg_imp = mean(improvements)
+            sd_imp = stdev(improvements) if len(improvements) > 1 else 0.0
+            n = len(improvements)
+            t_stat, p_val = paired_ttest(before_list, after_list)
+            d_effect = cohens_d(before_list, after_list)
+            p_str = f"{p_val:.4f}" if not math.isnan(p_val) else "N/A"
+            row += f"  {avg_imp:>+6.2f}±{sd_imp:<4.2f}  {n:>4}  {p_str:>8}  {d_effect:>6.2f}"
+
+        lines.append(row)
+
+    # Winner summary
+    lines.append("")
+    lines.append("  Winner by strategy (highest avg improvement):")
+    for strat in strategies:
+        best_prov = None
+        best_imp = float("-inf")
+        for prov in providers:
+            results = provider_results[prov]
+            improvements = []
+            for r in results:
+                s = r["strategies"].get(strat, {})
+                if s.get("status") == "success":
+                    improvements.append(s.get("score_after", 0.0) - r["baseline"]["score"])
+            if improvements:
+                avg = mean(improvements)
+                if avg > best_imp:
+                    best_imp = avg
+                    best_prov = prov
+        if best_prov:
+            lines.append(f"  {strat:<12}  → {best_prov} (+{best_imp:.2f})")
+
+    return "\n".join(lines)
+
+
+# ============================================================
 # Main Orchestrator
 # ============================================================
 
-async def run_evaluation(
+async def _run_single_provider(
+    prompts: List[Dict],
     strategies: List[str],
-    limit: Optional[int] = None,
-    provider: Optional[str] = None,
-    output_dir: str = DEFAULT_OUTPUT_DIR,
-):
-    """Run the full research evaluation."""
-    # Load benchmarks
-    with open(BENCHMARK_FILE, "r") as f:
-        all_prompts = json.load(f)
-    if limit:
-        all_prompts = all_prompts[:limit]
-
-    n_prompts = len(all_prompts)
-    n_strategies = len(strategies)
-    total_runs = n_prompts * n_strategies
-
-    print(f"\n{'=' * 70}")
-    print(f"  PromptOptimizer Pro — Research Evaluation")
-    print(f"  {n_prompts} prompts x {n_strategies} strategies = {total_runs} optimization runs")
-    print(f"  Strategies: {', '.join(strategies)}")
-    print(f"  Provider: {provider or 'default'}")
-    print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'=' * 70}\n")
-
-    all_results = []
-    total_start = time.time()
-
-    for i, prompt_data in enumerate(all_prompts):
-        print(f"  [{i+1}/{n_prompts}] {prompt_data['id']} ({prompt_data.get('category', '?')}): "
+    provider: str,
+) -> List[Dict]:
+    """Run all prompts for one provider. Returns list of prompt results."""
+    results = []
+    n = len(prompts)
+    for i, prompt_data in enumerate(prompts):
+        print(f"  [{provider}] [{i+1}/{n}] {prompt_data['id']} ({prompt_data.get('category', '?')}): "
               f"{prompt_data['prompt'][:50]}...")
         sys.stdout.flush()
-
         try:
             prompt_result = await run_single_prompt(prompt_data, strategies, provider)
         except Exception as e:
-            logger.error(f"Prompt {prompt_data['id']} failed entirely: {e}")
+            logger.error(f"[{provider}] Prompt {prompt_data['id']} failed: {e}")
             print(f"    SKIPPED - {str(e)[:60]}")
             prompt_result = {
                 "id": prompt_data["id"],
                 "category": prompt_data.get("category", "general"),
                 "task_type": prompt_data.get("task_type", "general"),
                 "prompt_preview": prompt_data["prompt"][:80],
-                "baseline": {
-                    "score": 0, "total_defects": 0, "high_severity_defects": 0,
-                    "consensus": 0, "tokens": 0, "cost": 0,
-                },
+                "baseline": {"score": 0, "total_defects": 0, "high_severity_defects": 0, "consensus": 0, "tokens": 0, "cost": 0},
                 "strategies": {},
                 "skipped": True,
                 "skip_reason": str(e),
             }
+        results.append(prompt_result)
 
-        all_results.append(prompt_result)
-
-        # Print per-prompt summary
         if prompt_result.get("skipped"):
-            print(f"    SKIPPED: {prompt_result.get('skip_reason', 'Unknown')[:60]}")
+            print(f"    SKIPPED: {prompt_result.get('skip_reason', '')[:60]}")
             continue
-
         bs = prompt_result["baseline"]["score"]
         for strat in strategies:
             s = prompt_result["strategies"].get(strat, {})
@@ -682,20 +738,79 @@ async def run_evaluation(
                 print(f"    {strat:>10}: {bs:.1f} -> {sa:.1f} ({sa-bs:+.1f}) [{ms}ms]")
             else:
                 print(f"    {strat:>10}: ERROR - {s.get('error', 'Unknown')[:40]}")
+    return results
+
+
+async def run_evaluation(
+    strategies: List[str],
+    limit: Optional[int] = None,
+    provider: Optional[str] = None,
+    providers: Optional[List[str]] = None,
+    output_dir: str = DEFAULT_OUTPUT_DIR,
+):
+    """Run the full research evaluation. Supports single or multi-provider mode."""
+    # Load benchmarks
+    with open(BENCHMARK_FILE, "r", encoding="utf-8") as f:
+        all_prompts = json.load(f)
+    if limit:
+        all_prompts = all_prompts[:limit]
+
+    # Resolve provider list
+    if providers and len(providers) > 1:
+        active_providers = providers
+    else:
+        active_providers = [provider] if provider else [None]
+
+    n_prompts = len(all_prompts)
+    n_strategies = len(strategies)
+    multi_mode = len(active_providers) > 1 or (len(active_providers) == 1 and active_providers[0] is not None and providers)
+
+    print(f"\n{'=' * 70}")
+    print(f"  PromptOptimizer Pro — Research Evaluation")
+    print(f"  {n_prompts} prompts x {n_strategies} strategies")
+    print(f"  Strategies: {', '.join(strategies)}")
+    if len(active_providers) > 1:
+        print(f"  Providers:  {', '.join(str(p) for p in active_providers)} (cross-provider mode)")
+    else:
+        print(f"  Provider:   {active_providers[0] or 'default'}")
+    print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"{'=' * 70}\n")
+
+    total_start = time.time()
+    provider_results: Dict[str, List[Dict]] = {}
+
+    for prov in active_providers:
+        prov_label = prov or "default"
+        print(f"\n{'─' * 70}")
+        print(f"  Running provider: {prov_label}")
+        print(f"{'─' * 70}")
+        results = await _run_single_provider(all_prompts, strategies, prov)
+        provider_results[prov_label] = results
 
     total_elapsed = time.time() - total_start
 
-    # ---- Generate Tables ----
-    print(generate_table1_score_improvement(all_results, strategies))
-    print(generate_table2_severity_reduction(all_results, strategies))
-    print(generate_table3_efficiency(all_results, strategies))
-    print(generate_table4_by_category(all_results, strategies))
-    print(generate_table5_anova(all_results, strategies))
-    print(generate_technique_effectiveness(all_results))
+    # ---- Generate per-provider tables ----
+    for prov_label, all_results in provider_results.items():
+        n_strategies_val = len(strategies)
+        total_runs = n_prompts * n_strategies_val
+        print(f"\n{'#' * 70}")
+        print(f"  RESULTS FOR PROVIDER: {prov_label.upper()}")
+        print(f"{'#' * 70}")
+        print(generate_table1_score_improvement(all_results, strategies))
+        print(generate_table2_severity_reduction(all_results, strategies))
+        print(generate_table3_efficiency(all_results, strategies))
+        print(generate_table4_by_category(all_results, strategies))
+        print(generate_table5_anova(all_results, strategies))
+        print(generate_technique_effectiveness(all_results))
+        succ = sum(1 for r in all_results for s in r["strategies"].values() if s.get("status") == "success")
+        print(f"\n  Successful runs: {succ}/{total_runs}")
+
+    # ---- Cross-provider table (if multiple providers) ----
+    if len(provider_results) > 1:
+        print(generate_table7_cross_provider(provider_results, strategies))
 
     print(f"\n{'=' * 70}")
     print(f"  Total evaluation time: {total_elapsed:.1f}s")
-    print(f"  Successful runs: {sum(1 for r in all_results for s in r['strategies'].values() if s.get('status') == 'success')}/{total_runs}")
     print(f"{'=' * 70}")
 
     # ---- Save outputs ----
@@ -704,49 +819,44 @@ async def run_evaluation(
 
     # Full JSON results
     json_path = os.path.join(output_dir, f"results_{timestamp}.json")
-    # Clean non-serializable fields
-    clean_results = json.loads(json.dumps(all_results, default=str))
+    clean_data = json.loads(json.dumps(provider_results, default=str))
     with open(json_path, "w") as f:
         json.dump({
             "timestamp": datetime.now().isoformat(),
             "config": {
                 "strategies": strategies,
                 "num_prompts": n_prompts,
-                "provider": provider,
+                "providers": list(provider_results.keys()),
                 "total_time_seconds": total_elapsed,
             },
-            "results": clean_results,
+            "results_by_provider": clean_data,
         }, f, indent=2)
     print(f"\n  JSON results: {json_path}")
 
-    # CSV summary
+    # CSV summary (first provider, or merged)
     csv_path = os.path.join(output_dir, f"summary_{timestamp}.csv")
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        header = ["prompt_id", "category", "baseline_score"]
+        header = ["provider", "prompt_id", "category", "baseline_score"]
         for strat in strategies:
-            header.extend([
-                f"{strat}_score_after",
-                f"{strat}_improvement",
-                f"{strat}_hs_defects_after",
-                f"{strat}_time_ms",
-            ])
+            header.extend([f"{strat}_score_after", f"{strat}_improvement", f"{strat}_hs_defects_after", f"{strat}_time_ms"])
         writer.writerow(header)
 
-        for r in all_results:
-            row = [r["id"], r["category"], r["baseline"]["score"]]
-            for strat in strategies:
-                s = r["strategies"].get(strat, {})
-                if s.get("status") == "success":
-                    row.extend([
-                        s.get("score_after", ""),
-                        round(s.get("score_after", 0) - r["baseline"]["score"], 2),
-                        s.get("high_severity_after", ""),
-                        s.get("processing_time_ms", ""),
-                    ])
-                else:
-                    row.extend(["ERR", "ERR", "ERR", "ERR"])
-            writer.writerow(row)
+        for prov_label, all_results in provider_results.items():
+            for r in all_results:
+                row = [prov_label, r["id"], r["category"], r["baseline"]["score"]]
+                for strat in strategies:
+                    s = r["strategies"].get(strat, {})
+                    if s.get("status") == "success":
+                        row.extend([
+                            s.get("score_after", ""),
+                            round(s.get("score_after", 0) - r["baseline"]["score"], 2),
+                            s.get("high_severity_after", ""),
+                            s.get("processing_time_ms", ""),
+                        ])
+                    else:
+                        row.extend(["ERR", "ERR", "ERR", "ERR"])
+                writer.writerow(row)
     print(f"  CSV summary:  {csv_path}")
     print()
 
@@ -766,11 +876,15 @@ def main():
     )
     parser.add_argument(
         "--limit", type=int, default=None,
-        help="Limit number of benchmark prompts (default: all)"
+        help="Limit number of benchmark prompts (min 30 for CLT validity, default: all 55)"
     )
     parser.add_argument(
         "--provider", default=None,
-        help="LLM provider: groq, anthropic, openai, gemini (default: server default)"
+        help="Single LLM provider: groq, anthropic, openai, gemini (default: server default)"
+    )
+    parser.add_argument(
+        "--providers", default=None,
+        help="Comma-separated providers for cross-provider comparison, e.g. gemini,anthropic"
     )
     parser.add_argument(
         "--output-dir", default=DEFAULT_OUTPUT_DIR,
@@ -784,10 +898,21 @@ def main():
             print(f"Error: Unknown strategy '{s}'. Choose from: {', '.join(ALL_STRATEGIES)}")
             sys.exit(1)
 
+    # Resolve provider(s)
+    providers_list: Optional[List[str]] = None
+    if args.providers:
+        providers_list = [p.strip() for p in args.providers.split(",")]
+        valid = {"groq", "anthropic", "openai", "gemini"}
+        for p in providers_list:
+            if p not in valid:
+                print(f"Error: Unknown provider '{p}'. Choose from: {', '.join(sorted(valid))}")
+                sys.exit(1)
+
     asyncio.run(run_evaluation(
         strategies=strategies,
         limit=args.limit,
         provider=args.provider,
+        providers=providers_list,
         output_dir=args.output_dir,
     ))
 

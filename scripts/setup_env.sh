@@ -140,13 +140,11 @@ echo ""
 
 # Validate configuration
 echo "Step 8: Validating configuration..."
-cd backend
-if python3 -c "from config import Config; errors = Config.validate(); exit(0 if not errors else 1)" 2>/dev/null; then
+if python3 -c "from backend.config import Config; errors = Config.validate(); exit(0 if not errors else 1)" 2>/dev/null; then
     print_success "Configuration is valid"
 else
     print_warning "Configuration validation failed - you may need to add API keys"
 fi
-cd ..
 echo ""
 
 # Summary
@@ -160,17 +158,15 @@ echo "     source venv/bin/activate"
 echo ""
 echo "  2. Make sure you've added your API keys to .env file"
 echo ""
-echo "  3. Start the development server:"
-echo "     cd backend && python app.py"
+echo "  3. Start the backend:"
+echo "     uvicorn backend.app:app --reload --port 8000"
 echo ""
-echo "  4. The API will be available at: http://localhost:5000"
+echo "  4. Start the frontend (in another terminal):"
+echo "     cd frontend && npm install && npm run dev"
 echo ""
-echo "  5. Run tests:"
+echo "  5. The API will be available at: http://localhost:8000"
+echo ""
+echo "  6. Run tests:"
 echo "     pytest backend/tests/"
-echo ""
-print_info "Documentation:"
-echo "  - README.md - Project overview"
-echo "  - docs/API.md - API documentation"
-echo "  - docs/SURVEY_ALIGNMENT.md - Research mapping"
 echo ""
 print_success "Happy coding! 🚀"

@@ -63,11 +63,11 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     
-    # ===== Flask Settings =====
-    FLASK_ENV = os.getenv("FLASK_ENV", "development")
-    FLASK_DEBUG = os.getenv("FLASK_DEBUG", "True").lower() == "true"
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
-    PORT = int(os.getenv("PORT", "5000"))
+    # ===== App Settings =====
+    APP_ENV = os.getenv("APP_ENV", os.getenv("FLASK_ENV", "development"))
+    DEBUG = os.getenv("APP_DEBUG", os.getenv("FLASK_DEBUG", "True")).lower() == "true"
+    SECRET_KEY = os.getenv("SECRET_KEY", "")
+    PORT = int(os.getenv("PORT", "8000"))
     HOST = os.getenv("HOST", "0.0.0.0")
 
     # ===== LLM Configuration =====
@@ -76,8 +76,8 @@ class Config:
     # Model registry with capabilities and pricing
     MODELS = {
         "anthropic": {
-            "claude-sonnet-4-20250514": {
-                "name": "Claude Sonnet 4",
+            "claude-sonnet-4-6": {
+                "name": "Claude Sonnet 4.6",
                 "context_window": 200000,
                 "max_output": 8192,
                 "cost_per_1k_input": 0.003,
@@ -85,14 +85,23 @@ class Config:
                 "supports_streaming": True,
                 "best_for": ["analysis", "optimization", "reasoning"]
             },
-            "claude-opus-4-5-20251101": {
-                "name": "Claude Opus 4.5",
+            "claude-opus-4-6": {
+                "name": "Claude Opus 4.6",
                 "context_window": 200000,
                 "max_output": 16384,
                 "cost_per_1k_input": 0.015,
                 "cost_per_1k_output": 0.075,
                 "supports_streaming": True,
                 "best_for": ["complex_analysis", "creative_optimization"]
+            },
+            "claude-haiku-4-5-20251001": {
+                "name": "Claude Haiku 4.5",
+                "context_window": 200000,
+                "max_output": 4096,
+                "cost_per_1k_input": 0.0008,
+                "cost_per_1k_output": 0.004,
+                "supports_streaming": True,
+                "best_for": ["fast_analysis", "testing"]
             }
         },
         "groq": {
@@ -127,6 +136,15 @@ class Config:
             }
         },
         "gemini": {
+            "gemini-3.1-pro-preview": {
+                "name": "Gemini 3.1 Pro Preview",
+                "context_window": 1048576,
+                "max_output": 8192,
+                "cost_per_1k_input": 0.00125,
+                "cost_per_1k_output": 0.005,
+                "supports_streaming": True,
+                "best_for": ["analysis", "optimization", "reasoning", "complex_tasks"]
+            },
             "gemini-2.0-flash": {
                 "name": "Gemini 2.0 Flash",
                 "context_window": 1048576,
@@ -149,10 +167,10 @@ class Config:
     }
     
     # Default models for each provider
-    ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+    ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
     
     # ===== Token Limits =====
     MAX_ANALYSIS_TOKENS = int(os.getenv("MAX_ANALYSIS_TOKENS", "4000"))
@@ -400,6 +418,9 @@ class Config:
     # Available strategies
     OPTIMIZATION_STRATEGIES = ["standard", "dgeo", "shdt", "cdraf"]
 
+    # ===== LLM Timeout =====
+    LLM_CALL_TIMEOUT = int(os.getenv("LLM_CALL_TIMEOUT", "120"))  # seconds
+
     # ===== API Retry Configuration =====
     MAX_RETRIES = 3
     RETRY_DELAY = 1  # seconds
@@ -414,6 +435,9 @@ class Config:
     def validate(cls) -> List[str]:
         """Validate configuration and return list of errors"""
         errors = []
+
+        if not cls.SECRET_KEY:
+            errors.append("SECRET_KEY must be set in environment variables")
 
         if not cls.ANTHROPIC_API_KEY and cls.DEFAULT_PROVIDER == "anthropic":
             errors.append("ANTHROPIC_API_KEY is required when using Anthropic as default provider")
@@ -443,12 +467,12 @@ class Config:
     @classmethod
     def is_development(cls) -> bool:
         """Check if running in development mode"""
-        return cls.FLASK_ENV == "development"
-    
+        return cls.APP_ENV == "development"
+
     @classmethod
     def is_production(cls) -> bool:
         """Check if running in production mode"""
-        return cls.FLASK_ENV == "production"
+        return cls.APP_ENV == "production"
 
 
 # Export commonly used enums and config

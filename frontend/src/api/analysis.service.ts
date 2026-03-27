@@ -68,8 +68,8 @@ export const analysisService = {
           try {
             const event = JSON.parse(line.slice(6)) as AgentStreamEvent;
             onEvent(event);
-          } catch {
-            // skip malformed events
+          } catch (parseErr) {
+            console.warn('Skipping malformed SSE event:', line, parseErr);
           }
         }
       }

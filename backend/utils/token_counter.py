@@ -164,7 +164,7 @@ def calculate_token_reduction(
     original_text: str,
     optimized_text: str,
     model: str = "claude-sonnet-4-5-20250929"
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Calculate token reduction between original and optimized prompts
     
@@ -194,7 +194,7 @@ def calculate_token_reduction(
 def get_token_budget_remaining(
     used_tokens: int,
     total_budget: int
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Calculate remaining token budget
     

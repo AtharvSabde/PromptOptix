@@ -116,24 +116,36 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 3. **Install dependencies**
 ```bash
-cd backend
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 4. **Configure environment variables**
 ```bash
-cp ../.env.example ../.env
+cp .env.example .env
 # Edit .env and add your API keys:
 # ANTHROPIC_API_KEY=your_key_here
 # GROQ_API_KEY=your_key_here
 ```
 
-5. **Run the application**
+5. **Install frontend dependencies**
 ```bash
-python app.py
+cd frontend
+npm install
+cd ..
 ```
 
-The API will be available at `http://localhost:5000`
+6. **Run the backend**
+```bash
+uvicorn backend.app:app --reload --port 8000
+```
+
+7. **Run the frontend** (in a separate terminal)
+```bash
+cd frontend
+npm run dev
+```
+
+The API will be available at `http://localhost:8000` and the frontend at `http://localhost:5173`
 
 ---
 
