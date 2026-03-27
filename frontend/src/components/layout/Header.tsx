@@ -23,7 +23,7 @@ export const Header: React.FC = () => {
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-bold text-white">
-              Prompt Optimizer
+              PromptOptix
             </span>
           </Link>
 
