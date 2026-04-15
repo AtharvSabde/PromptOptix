@@ -1,372 +1,347 @@
-# 🎯 PromptOptimizer Pro
+# PromptOptix
 
-**Automated Prompt Engineering Tool with Multi-Agent Defect Detection**
+**Defect-aware prompt optimization with multi-agent diagnosis and multi-strategy rewriting.**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Flask](https://img.shields.io/badge/flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 
----
+PromptOptix is a research-oriented prompt engineering system that analyzes prompts for defects, explains what is wrong, and applies optimization strategies to produce stronger prompts. It combines four specialist diagnostic agents, a 28-defect taxonomy, a 41-technique prompt engineering registry, and several optimization strategies including DGEO, SHDT, CDRAF, and a Unified pipeline.
 
-## 📚 Research Background
+## What It Does
 
-This project implements the findings from our published survey paper:
+- Detects prompt defects using four specialist agents.
+- Aggregates findings with capability-normalized consensus.
+- Scores prompt quality on a 0-10 scale.
+- Rewrites prompts using defect-to-technique guidance.
+- Supports multiple optimization strategies: Standard, DGEO, SHDT, CDRAF, and Unified.
+- Streams analysis and Unified optimization progress with Server-Sent Events.
+- Provides a React frontend for analysis, optimization, techniques, and history.
+- Includes evaluation scripts and benchmark data for research experiments.
 
-**"A Comprehensive Survey of Prompt Engineering Techniques and Defect Taxonomies"**  
-*Nagpure et al., 2025, International Journal of Fundamental & Applied Research*
+## Research Framing
 
-### Key Research Gaps Addressed
+PromptOptix is built around a defect-aware view of prompt optimization:
 
-Our survey identified that:
-- ✅ **60-80% of developer time** is spent in trial-and-error prompt engineering
-- ✅ **No automated defect detection tools exist** for systematic prompt analysis
-- ✅ **28 defect types** were cataloged from literature (Tian et al.'s taxonomy)
-- ✅ **41 prompting techniques** were documented but lack automated application
+1. Diagnose the prompt before rewriting it.
+2. Identify concrete defect types rather than relying only on generic feedback.
+3. Select optimization strategies and rewrite guidance from the detected defects.
+4. Return both an optimized prompt and a transparent diagnostic trace.
 
-**PromptOptimizer Pro fills this gap** by being the first tool to automate defect detection and technique application based on peer-reviewed research.
+The full taxonomy contains 28 defects across six categories. The current implementation directly operationalizes four specialist agent categories:
 
----
+| Agent | Implemented Focus | Defect IDs |
+|---|---|---|
+| ClarityAgent | Specification and Intent | D001-D004 |
+| StructureAgent | Structure and Formatting | D005-D009 |
+| ContextAgent | Context and Memory | D010-D014 |
+| SecurityAgent | Security and Safety | D023-D028 |
 
-## 🚀 Features
+The current four-agent implementation directly covers 20 of the 28 taxonomy defects. The technique registry contains 41 prompt engineering techniques, with mappings for most taxonomy defects.
 
-### 1. **Multi-Agent Defect Detection**
-- **4 Specialized Agents** working in parallel:
-  - 🔍 **Clarity Agent** → Detects specification & intent defects
-  - 📋 **Structure Agent** → Detects formatting & organization issues
-  - 🧠 **Context Agent** → Detects memory & relevance problems
-  - 🛡️ **Security Agent** → Detects injection & safety vulnerabilities
-- **Consensus Mechanism** → Agents vote on severity, system aggregates results
+## Optimization Strategies
 
-### 2. **Adaptive Optimization**
-- Maps detected defects to appropriate techniques from the 41-technique catalog
-- Rule-based + LLM-guided technique selection
-- Generates optimized prompts with detailed change logs
+| Strategy | Purpose |
+|---|---|
+| Standard | Fast single-pass rewrite using weighted defect-to-technique mapping. |
+| DGEO | Defect-Guided Evolutionary Optimization using multiple defect-focused prompt variants. |
+| SHDT | Score-History Defect Trajectory refinement that tracks score changes across iterations. |
+| CDRAF | Critic-Driven Refinement with Agent Feedback using specialist critique loops. |
+| Unified | Chained multi-paradigm pipeline combining Standard, DGEO, SHDT, and CDRAF. |
 
-### 3. **A/B Testing & Evaluation**
-- Side-by-side comparison of original vs. optimized prompts
-- Quality metrics: clarity, completeness, structure, coherence
-- Statistical significance testing
-- Token count reduction tracking
+## Architecture
 
-### 4. **Research-Backed Taxonomy**
-- Implements **Tian et al.'s 28 defects** across 6 dimensions:
-  1. Specification & Intent (4 defects)
-  2. Structure & Formatting (5 defects)
-  3. Context & Memory (5 defects)
-  4. Output Guidance (4 defects)
-  5. Examples & Demonstrations (4 defects)
-  6. Security & Safety (6 defects)
+```mermaid
+flowchart LR
+    prompt["Input prompt<br/>task context"] --> intake["Prompt intake<br/>and normalization"]
+    intake --> agents["Multi-agent<br/>diagnostic layer"]
 
----
+    agents --> clarity["ClarityAgent<br/>D001-D004"]
+    agents --> structure["StructureAgent<br/>D005-D009"]
+    agents --> context["ContextAgent<br/>D010-D014"]
+    agents --> security["SecurityAgent<br/>D023-D028"]
 
-## 🏗️ Architecture
+    clarity --> consensus["Capability-normalized<br/>consensus"]
+    structure --> consensus
+    context --> consensus
+    security --> consensus
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    User Interface                        │
-│              (Future React Frontend)                     │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│                  Flask API Layer                         │
-│  /api/analyze  |  /api/optimize  |  /api/test           │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│              Multi-Agent Orchestrator                    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
-│  │ Clarity  │ │Structure │ │ Context  │ │ Security │  │
-│  │  Agent   │ │  Agent   │ │  Agent   │ │  Agent   │  │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
-│                  Consensus Mechanism                     │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│              Optimization Engine                         │
-│  Defect→Technique Mapper  |  Adaptive Selector          │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│                LLM Service Layer                         │
-│      Anthropic Claude API  |  Groq API (Fallback)       │
-└─────────────────────────────────────────────────────────┘
+    consensus --> diagnosis["Defect-aware diagnosis<br/>quality score<br/>confirmed defects"]
+    diagnosis --> optimizer["Optimization<br/>strategy layer"]
+
+    optimizer --> standard["Standard"]
+    optimizer --> dgeo["DGEO"]
+    optimizer --> shdt["SHDT"]
+    optimizer --> cdraf["CDRAF"]
+    optimizer --> unified["Unified"]
+
+    standard --> output["Optimized prompt<br/>diagnostic trace"]
+    dgeo --> output
+    shdt --> output
+    cdraf --> output
+    unified --> output
 ```
 
----
+More detailed diagrams are available in [architecture_diagrams.md](architecture_diagrams.md).
 
-## 📦 Installation
+## Tech Stack
+
+| Layer | Tools |
+|---|---|
+| Backend | FastAPI, Pydantic, asyncio |
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS |
+| LLM providers | Gemini, Anthropic, Groq, OpenAI |
+| Evaluation | pandas, scipy, datasets, rouge-score, pytest |
+| Storage | SQLite-backed optimization history |
+
+## Quick Start
 
 ### Prerequisites
-- Python 3.11 or higher
-- API keys from [Anthropic](https://console.anthropic.com/) and/or [Groq](https://console.groq.com/)
 
-### Quick Start
+- Python 3.11+
+- Node.js 18+
+- At least one LLM provider API key
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/promptoptimizer-pro.git
-cd promptoptimizer-pro
-```
+### 1. Create The Backend Environment
 
-2. **Set up virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**
-```bash
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r backend/requirements.txt
 ```
 
-4. **Configure environment variables**
+For macOS or Linux:
+
 ```bash
-cp .env.example .env
-# Edit .env and add your API keys:
-# ANTHROPIC_API_KEY=your_key_here
-# GROQ_API_KEY=your_key_here
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
 ```
 
-5. **Install frontend dependencies**
-```bash
+### 2. Configure Environment Variables
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then edit `.env` and set at least one provider key:
+
+```env
+DEFAULT_PROVIDER=gemini
+GEMINI_API_KEY=your_key_here
+
+JUDGE_PROVIDER=gemini
+JUDGE_MODEL=gemini-2.5-pro
+```
+
+Supported provider keys:
+
+- `GEMINI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GROQ_API_KEY`
+- `OPENAI_API_KEY`
+
+### 3. Install Frontend Dependencies
+
+```powershell
 cd frontend
 npm install
+Copy-Item .env.example .env
 cd ..
 ```
 
-6. **Run the backend**
-```bash
+The default frontend API URL is:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+### 4. Start The Backend
+
+```powershell
 uvicorn backend.app:app --reload --port 8000
 ```
 
-7. **Run the frontend** (in a separate terminal)
-```bash
+Backend URLs:
+
+- API root: `http://localhost:8000`
+- Swagger docs: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/api/health`
+
+### 5. Start The Frontend
+
+Open a second terminal:
+
+```powershell
 cd frontend
 npm run dev
 ```
 
-The API will be available at `http://localhost:8000` and the frontend at `http://localhost:5173`
+Frontend URL:
 
----
+- `http://localhost:5173`
 
-## 🧪 Usage
+## API Overview
 
-### API Endpoints
+### Analyze A Prompt
 
-#### 1. Analyze Prompt
-**POST** `/api/analyze`
-
-Detect defects in a prompt using multi-agent analysis.
+`POST /api/analyze`
 
 ```json
 {
   "prompt": "Write a function to sort numbers",
   "task_type": "code_generation",
+  "domain": "software_engineering",
+  "include_agent_breakdown": true
+}
+```
+
+Streaming version:
+
+`POST /api/analyze/stream`
+
+### Standard Optimization
+
+`POST /api/optimize`
+
+```json
+{
+  "prompt": "Write code to sort numbers",
+  "optimization_level": "balanced",
+  "max_techniques": 5,
+  "task_type": "code_generation",
   "domain": "software_engineering"
 }
 ```
 
-**Response:**
-```json
-{
-  "status": "success",
-  "analysis": {
-    "defects": [
-      {
-        "type": "underspecification",
-        "severity": "high",
-        "confidence": 0.85,
-        "description": "Missing algorithm specification",
-        "agent": "clarity",
-        "remediation": "Specify sorting algorithm (quicksort, mergesort, etc.)"
-      }
-    ],
-    "overall_score": 6.2,
-    "agent_consensus": 0.78
-  }
-}
-```
+### Advanced Optimization
 
-#### 2. Optimize Prompt
-**POST** `/api/optimize`
-
-Apply techniques to fix detected defects.
+`POST /api/optimize/advanced`
 
 ```json
 {
   "prompt": "Write a function to sort numbers",
-  "analysis": { /* from /analyze endpoint */ },
-  "optimization_level": "balanced"
+  "strategy": "dgeo",
+  "optimization_level": "balanced",
+  "task_type": "code_generation",
+  "domain": "software_engineering"
 }
 ```
 
-**Response:**
-```json
-{
-  "status": "success",
-  "original_prompt": "Write a function to sort numbers",
-  "optimized_prompt": "Write a Python function that implements the quicksort algorithm to sort a list of integers in ascending order. Include docstrings and handle edge cases.",
-  "techniques_applied": [
-    "specification_enhancement",
-    "example_inclusion",
-    "constraint_addition"
-  ],
-  "change_log": [
-    "Added language specification (Python)",
-    "Specified algorithm (quicksort)",
-    "Added output format requirement (ascending order)"
-  ],
-  "improvement_score": 8.7
-}
+Supported advanced strategies:
+
+- `standard`
+- `dgeo`
+- `shdt`
+- `cdraf`
+- `auto` for the Unified pipeline
+
+Streaming Unified optimization:
+
+`POST /api/optimize/advanced/stream`
+
+### Other Endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | System health, configured providers, component status. |
+| `GET /api/techniques` | List all registered prompt engineering techniques. |
+| `GET /api/techniques/{technique_id}` | Get one technique by ID. |
+| `GET /api/history` | Retrieve saved optimization history. |
+| `GET /api/history/stats` | Aggregate optimization history statistics. |
+| `GET /api/techniques/effectiveness` | Learned technique effectiveness data. |
+
+## Frontend Pages
+
+| Path | Purpose |
+|---|---|
+| `/` | Home page and system overview. |
+| `/analyze` | Run multi-agent prompt analysis. |
+| `/optimize` | Optimize prompts with Standard, DGEO, SHDT, CDRAF, or Unified. |
+| `/techniques` | Browse the technique registry. |
+| `/history` | View previous optimization runs and statistics. |
+
+## Project Structure
+
+```text
+.
+|-- backend/
+|   |-- app.py
+|   |-- config.py
+|   |-- agents/
+|   |-- evaluation/
+|   |-- models/
+|   |-- prompts/
+|   |-- routes/
+|   |-- services/
+|   |-- tests/
+|   `-- utils/
+|-- data/
+|   |-- benchmarks/
+|   `-- evaluation/
+|-- docs/
+|   `-- finall paper 2.pdf
+|-- frontend/
+|   |-- src/
+|   |-- package.json
+|   `-- .env.example
+|-- scripts/
+|-- .env.example
+|-- architecture_diagrams.md
+|-- Readme.md
+`-- formula_analysis.md
 ```
 
-#### 3. A/B Test
-**POST** `/api/test`
+## Running Tests
 
-Compare original vs. optimized prompts.
+Backend tests:
 
-```json
-{
-  "original_prompt": "Write a function to sort numbers",
-  "optimized_prompt": "Write a Python function...",
-  "test_input": "Sample test case",
-  "iterations": 5
-}
+```powershell
+pytest backend/tests
 ```
 
----
+Frontend checks:
 
-## 🎓 Research Alignment
+```powershell
+cd frontend
+npm run lint
+npm run build
+```
 
-This implementation directly maps to our published survey:
+## Evaluation
 
-| Survey Section | Implementation Component |
-|----------------|--------------------------|
-| Section 4: 41 Techniques | `models/technique_registry.py` |
-| Section 5: Tian et al.'s 28 Defects | `models/defect_taxonomy.py` |
-| Section 6: Evaluation Frameworks | `evaluation/automated_metrics.py` |
-| Multi-Agent Systems (Citation 47-52) | `agents/` directory |
-| Adaptive Optimization (Citation 28-35) | `services/optimizer_service.py` |
+Evaluation artifacts live under `data/evaluation/`, with benchmark definitions under `data/benchmarks/`.
 
-**Full citation mapping:** See [docs/SURVEY_ALIGNMENT.md](docs/SURVEY_ALIGNMENT.md)
+Useful commands:
 
----
-
-## 📊 Evaluation
-
-### Test Dataset
-- 50+ prompts from public datasets
-- Self-annotated with defect types
-- Covers 9 task types across 8 domains
-
-### Metrics
-- **Defect Detection Accuracy:** % of correctly identified defects
-- **Optimization Effectiveness:** Quality score improvement
-- **Token Reduction:** % decrease in prompt length
-- **Statistical Significance:** p-value < 0.05
-
-### Running Evaluation
-```bash
+```powershell
 python scripts/evaluate_system.py
 ```
 
----
+Additional research and architecture notes are tracked in:
 
-## 🗂️ Project Structure
+- [architecture_diagrams.md](architecture_diagrams.md)
+- [formula_analysis.md](formula_analysis.md)
 
-```
-promptoptimizer-pro/
-├── backend/
-│   ├── app.py                    # Flask application entry point
-│   ├── config.py                 # Configuration management
-│   ├── agents/                   # Multi-agent system
-│   │   ├── clarity_agent.py
-│   │   ├── structure_agent.py
-│   │   ├── context_agent.py
-│   │   └── security_agent.py
-│   ├── services/                 # Business logic
-│   │   ├── llm_service.py
-│   │   ├── analyzer_service.py
-│   │   ├── optimizer_service.py
-│   │   └── agent_orchestrator.py
-│   ├── models/                   # Data models
-│   │   ├── defect_taxonomy.py    # 28 defects
-│   │   └── technique_registry.py # 41 techniques
-│   └── routes/                   # API endpoints
-├── data/
-│   └── test_prompts/             # Evaluation dataset
-├── docs/
-│   ├── SURVEY_ALIGNMENT.md       # Research mapping
-│   ├── DEFECT_TAXONOMY.md        # Complete defect list
-│   └── API.md                    # API documentation
-└── README.md
-```
+## Configuration Reference
 
----
+Common `.env` settings:
 
-## 🔬 Key Innovations
+| Variable | Purpose |
+|---|---|
+| `DEFAULT_PROVIDER` | Main provider for optimization calls. |
+| `JUDGE_PROVIDER` | Provider used for evaluation/judging. |
+| `JUDGE_MODEL` | Model used by the evaluator. |
+| `CONSENSUS_THRESHOLD` | Consensus threshold for confirmed defects. Default: `0.7`. |
+| `DGEO_POPULATION_SIZE` | DGEO population size. |
+| `DGEO_GENERATIONS` | DGEO generation count. |
+| `SHDT_MAX_ITERATIONS` | SHDT maximum refinement iterations. |
+| `SHDT_TARGET_SCORE` | SHDT target score. |
+| `CDRAF_MAX_ROUNDS` | CDRAF critique-refinement rounds. |
 
-1. **First Automated Implementation** of Tian et al.'s taxonomy
-2. **Multi-Agent Architecture** with consensus mechanism
-3. **Adaptive Technique Selection** based on defect types
-4. **Research-Backed** - every feature maps to published literature
+## Notes
 
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## 📖 Citation
-
-If you use this tool in your research, please cite our survey paper:
-
-```bibtex
-@article{nagpure2025promptsurvey,
-  title={A Comprehensive Survey of Prompt Engineering Techniques and Defect Taxonomies},
-  author={Nagpure, [Your Name] and [Co-authors]},
-  journal={International Journal of Fundamental \& Applied Research},
-  year={2025},
-  publisher={IJFMR}
-}
-```
-
----
-
-## 👥 Authors
-
-- **[Your Name]** - *Lead Developer & Researcher*
-- **[Team Members]** - *Co-authors*
-
-**Institution:** [Your University]  
-**Program:** Final Year Computer Engineering Project
-
----
-
-## 🙏 Acknowledgments
-
-- **Tian et al.** for the comprehensive defect taxonomy
-- **Anthropic** for Claude API access
-- **Groq** for fast inference capabilities
-- All authors cited in our survey paper
-
----
-
-## 📞 Contact
-
-For questions or collaboration:
-- **Email:** your.email@university.edu
-- **GitHub Issues:** [Create an issue](https://github.com/yourusername/promptoptimizer-pro/issues)
-- **Research Paper:** [Link to IJFMR publication]
-
----
-
-**Built with ❤️ for the prompt engineering research community**
+- The system is research-oriented and can make many LLM calls, especially for DGEO and Unified optimization.
+- Configure provider budgets and timeouts before running large evaluations.
+- The judge model can differ from the optimizer model.
+- The current implementation uses weighted defect-to-technique mapping rather than a UCB1 ATSEL selector.
