@@ -82,7 +82,7 @@ flowchart LR
     unified --> output
 ```
 
-More detailed diagrams are available in [architecture_diagrams.md](architecture_diagrams.md).
+
 
 ## Tech Stack
 
@@ -318,10 +318,6 @@ Useful commands:
 python scripts/evaluate_system.py
 ```
 
-Additional research and architecture notes are tracked in:
-
-- [architecture_diagrams.md](architecture_diagrams.md)
-- [formula_analysis.md](formula_analysis.md)
 
 ## Configuration Reference
 
