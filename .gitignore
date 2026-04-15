@@ -1,66 +1,72 @@
-# ===== Environment =====
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Environment variables
 .env
 .env.local
 .env.*.local
 
-# ===== Python =====
-__pycache__/
-*.py[cod]
-*.so
-.venv/
-venv/
-.Python
-build/
-dist/
-*.egg-info/
-.eggs/
-.pytest_cache/
-.mypy_cache/
-.coverage
-coverage.xml
-htmlcov/
-
-# ===== Node / Frontend =====
+# Node / Frontend
 node_modules/
+frontend/node_modules/
 frontend/dist/
-*.tsbuildinfo
-.npm
-.eslintcache
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
 
-# ===== Logs =====
-*.log
-logs/
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# ===== Database =====
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database
 *.db
 *.sqlite
 *.sqlite3
+data/*.db
 
-# ===== Project Data =====
-data/evaluation/
-cache/
-temp/
-tmp/
-*.tmp
+# Logs
+*.log
+logs/
 
-# ===== Security =====
-*.pem
-*.key
-*.crt
-secrets/
-credentials/
-.api_keys
-tokens.json
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
 
-# ===== IDE =====
-.vscode/
-.idea/
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# ===== OS (Windows) =====
-Thumbs.db
-[Dd]esktop.ini
-$RECYCLE.BIN/
-
-# ===== Keep empty dirs =====
-!.gitkeep
-!**/.gitkeep
+# Build artifacts
+*.pyc
+*.pyo
+dist/
