@@ -1,0 +1,87 @@
+{
+  "name": "PromptOptimizer Pro Publication Benchmark Protocol",
+  "version": "1.0",
+  "description": "Template protocol for a publishable multi-bucket benchmark suite.",
+  "splits": {
+    "public_dev": "Allowed for prompt/strategy tuning and ablations.",
+    "public_test": "Used for final reported main results.",
+    "holdout": "Reserved hidden split for final lockbox evaluation."
+  },
+  "buckets": {
+    "real_user": {
+      "description": "WildBench / Arena-Hard-style real user prompts.",
+      "target_examples": 100
+    },
+    "instruction_following": {
+      "description": "IFEval-style verifiable instruction-following tasks.",
+      "target_examples": 100
+    },
+    "code_execution": {
+      "description": "HumanEval / MBPP / LiveCodeBench-style executable code tasks.",
+      "target_examples": 100
+    },
+    "safety": {
+      "description": "JailbreakBench / AILuminate-style safety and jailbreak hazards.",
+      "target_examples": 100
+    },
+    "defect_taxonomy": {
+      "description": "PromptOptimizer-specific defect taxonomy benchmark.",
+      "target_examples": 100
+    }
+  },
+  "methodology": {
+    "headline_metrics": [
+      "defect-based improvement",
+      "instruction-following success",
+      "code execution pass@k",
+      "safety refusal / robustness rate",
+      "independent judge win rate",
+      "blinded human preference on a stratified sample"
+    ],
+    "rules": [
+      "Tune only on public_dev.",
+      "Report final numbers on public_test.",
+      "Keep holdout hidden until final lockbox run.",
+      "Use an independent judge model for LLM-as-judge.",
+      "Use execution-based metrics for code tasks whenever possible."
+    ]
+  },
+  "small_budget_40": {
+    "total_prompts": 40,
+    "bucket_quotas": {
+      "real_user": 12,
+      "instruction_following": 8,
+      "code_execution": 8,
+      "safety": 6,
+      "defect_taxonomy": 6
+    },
+    "split_target": {
+      "public_dev": 8,
+      "public_test": 24,
+      "holdout": 8
+    },
+    "recommended_repeats": {
+      "main_run": 1,
+      "stability_subset": 3
+    }
+  },
+  "small_budget_25": {
+    "total_prompts": 25,
+    "bucket_quotas": {
+      "real_user": 7,
+      "instruction_following": 5,
+      "code_execution": 5,
+      "safety": 4,
+      "defect_taxonomy": 4
+    },
+    "split_target": {
+      "public_dev": 5,
+      "public_test": 15,
+      "holdout": 5
+    },
+    "recommended_repeats": {
+      "main_run": 1,
+      "stability_subset": 2
+    }
+  }
+}

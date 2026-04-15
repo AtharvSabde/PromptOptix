@@ -40,12 +40,109 @@ Before running evaluation:
 ### Supported Models (2026)
 | Provider | Model ID | Notes |
 |----------|----------|-------|
-| `gemini` | `gemini-3.1-pro-preview` | Default Gemini model (replaces deprecated Gemini 3 Pro) |
+| `gemini` | `gemini-2.5-pro` | Default optimization model |
+| `judge` | `gemini-3-pro-preview` | Default LLM-as-judge model |
 | `anthropic` | `claude-sonnet-4-6` | Default Claude model |
 | `groq` | `llama-3.3-70b-versatile` | Free, fast testing |
 | `openai` | `gpt-4o` | Alternative baseline |
 
-> **Note:** Gemini 3 Pro Preview was deprecated on March 9, 2026. Use `gemini-3.1-pro-preview` instead.
+> **Note:** The evaluation stack is now configured to separate optimization and judging: optimization defaults to `gemini-2.5-pro`, while LLM-as-judge defaults to `gemini-3-pro-preview`.
+
+### Recommended Publication-Grade Invocation
+
+For a paper-quality run, prefer repeated trials plus the `paper` profile so every method is evaluated closer to its intended strength instead of a speed-optimized approximation:
+
+```bash
+python scripts/run_evaluation.py \
+  --strategies standard,dgeo,shdt,cdraf,unified \
+  --provider gemini \
+  --evaluation-profile paper \
+  --repeats 3 \
+  --bootstrap-samples 5000 \
+  --seed 42
+```
+
+This upgraded pipeline now records:
+- repeated-trial stability (`score_after_std`, coefficient of variation, success rate)
+- pairwise strategy comparisons with Holm-corrected p-values
+- benchmark alignment diagnostics against `expected_defects` and `human_score`
+- a reproducibility manifest in the saved JSON output
+
+### Multi-Bucket Protocol
+
+The evaluation runner now supports explicit benchmark buckets and splits so the paper protocol can match the methodology instead of relying on one mixed JSON file.
+
+Buckets:
+- `real_user`
+- `instruction_following`
+- `code_execution`
+- `safety`
+- `defect_taxonomy`
+
+Splits:
+- `public_dev` for tuning
+- `public_test` for reported results
+- `holdout` for lockbox evaluation
+
+Example:
+
+```bash
+python scripts/run_evaluation.py \
+  --provider gemini \
+  --judge-provider gemini \
+  --judge-model gemini-3-pro-preview \
+  --benchmark-buckets real_user,defect_taxonomy \
+  --benchmark-split public_test \
+  --evaluation-profile paper \
+  --repeats 3
+```
+
+The protocol scaffold lives at `data/benchmarks/protocol_template.json`.
+
+### Small-Budget 40-Prompt Protocol
+
+For a budget-constrained but still paper-credible setup, use exactly 40 prompts across the 5 benchmark buckets:
+
+- `real_user`: 12
+- `instruction_following`: 8
+- `code_execution`: 8
+- `safety`: 6
+- `defect_taxonomy`: 6
+
+This is now supported directly by the importer via the default `small40` protocol.
+
+### Building a Publication Benchmark File
+
+You can now build a unified benchmark file from multiple external suites:
+
+```bash
+python scripts/import_publication_benchmarks.py \
+  --suites defect_taxonomy,wildbench,ifeval,humaneval,mbpp,jailbreakbench \
+  --per-suite-limit 100 \
+  --protocol small40 \
+  --seed 42
+```
+
+This writes `data/benchmarks/publication_benchmark.json` with:
+- normalized benchmark metadata
+- explicit `benchmark_bucket`
+- explicit `benchmark_split`
+- protocol-style `public_dev` / `public_test` / `holdout` assignments
+- a 40-prompt capped benchmark using the bucket quotas above
+
+Then run evaluation against that file:
+
+```bash
+python scripts/run_evaluation.py \
+  --benchmark-file data/benchmarks/publication_benchmark.json \
+  --benchmark-buckets real_user,instruction_following,code_execution,safety,defect_taxonomy \
+  --benchmark-split public_test \
+  --provider gemini \
+  --judge-provider gemini \
+  --judge-model gemini-3-pro-preview \
+  --evaluation-profile paper \
+  --repeats 1
+```
 
 ---
 

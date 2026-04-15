@@ -32,6 +32,7 @@ rouge-score
 numpy
 pandas
 scipy
+datasets
 
 # ===== Testing =====
 pytest

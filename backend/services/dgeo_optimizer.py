@@ -23,7 +23,7 @@ import re
 import asyncio
 from typing import Dict, List, Any, Optional, Tuple
 
-from ..utils import get_logger, parse_json_response, OptimizationError
+from ..utils import get_logger, OptimizationError
 from ..config import Config
 from .agent_orchestrator import get_orchestrator
 from .llm_service import get_llm_service
@@ -328,18 +328,18 @@ class DGEOOptimizer:
 
             provider = context.get("provider") if context else None
             llm_result = await asyncio.to_thread(
-                self.llm_service.call,
+                self.llm_service.call_with_json_response,
                 prompt=meta_prompt,
                 system_prompt="You are a prompt improvement specialist. Rewrite prompts to fix specific issues. Return only valid JSON.",
                 temperature=0.5,  # Slightly higher for diversity
                 max_tokens=4096,
-                provider=provider
+                provider=provider,
+                required_fields=["variant_prompt"],
+                default={"variant_prompt": prompt, "fixes_applied": []},
+                field_defaults={"variant_prompt": prompt, "fixes_applied": []}
             )
 
-            parsed = parse_json_response(
-                llm_result["response"],
-                required_fields=["variant_prompt"]
-            )
+            parsed = llm_result["parsed_response"]
 
             variant_prompt = parsed["variant_prompt"]
 
@@ -424,18 +424,18 @@ class DGEOOptimizer:
 
             provider = context.get("provider") if context else None
             llm_result = await asyncio.to_thread(
-                self.llm_service.call,
+                self.llm_service.call_with_json_response,
                 prompt=crossover_prompt,
                 system_prompt="You are a prompt combination specialist. Merge the best aspects of two prompts. Return only valid JSON.",
                 temperature=0.4,
                 max_tokens=4096,
-                provider=provider
+                provider=provider,
+                required_fields=["crossover_prompt"],
+                default={"crossover_prompt": variant_a["prompt"], "from_variant_a": [], "from_variant_b": []},
+                field_defaults={"crossover_prompt": variant_a["prompt"], "from_variant_a": [], "from_variant_b": []}
             )
 
-            parsed = parse_json_response(
-                llm_result["response"],
-                required_fields=["crossover_prompt"]
-            )
+            parsed = llm_result["parsed_response"]
 
             child_prompt = parsed["crossover_prompt"]
 
@@ -493,18 +493,18 @@ class DGEOOptimizer:
 
             provider = context.get("provider") if context else None
             llm_result = await asyncio.to_thread(
-                self.llm_service.call,
+                self.llm_service.call_with_json_response,
                 prompt=mutation_prompt,
                 system_prompt="You are a prompt refinement specialist. Make targeted fixes to address specific issues. Return only valid JSON.",
                 temperature=0.3,
                 max_tokens=4096,
-                provider=provider
+                provider=provider,
+                required_fields=["mutated_prompt"],
+                default={"mutated_prompt": variant["prompt"], "mutations_applied": []},
+                field_defaults={"mutated_prompt": variant["prompt"], "mutations_applied": []}
             )
 
-            parsed = parse_json_response(
-                llm_result["response"],
-                required_fields=["mutated_prompt"]
-            )
+            parsed = llm_result["parsed_response"]
 
             mutated_prompt = parsed["mutated_prompt"]
 

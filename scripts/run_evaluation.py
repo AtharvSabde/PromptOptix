@@ -18,9 +18,12 @@ Usage:
 import asyncio
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
+import platform
+import random
 import sys
 import time
 from datetime import datetime
@@ -36,6 +39,14 @@ import logging
 from backend.services.agent_orchestrator import get_orchestrator
 from backend.services.optimizer_service import get_optimizer
 from backend.services.db_service import save_benchmark_result, get_benchmark_summary
+from backend.evaluation import (
+    get_comparison_engine,
+    get_quality_scorer,
+    annotate_prompt_records,
+    filter_prompt_records,
+    summarize_buckets,
+)
+from backend.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +54,120 @@ BENCHMARK_FILE = os.path.join(PROJECT_ROOT, "data", "benchmarks", "prompts.json"
 DEFAULT_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "data", "evaluation")
 
 ALL_STRATEGIES = ["standard", "dgeo", "shdt", "cdraf", "unified"]
+
+EVALUATION_PROFILES = {
+    "quick": {
+        "standard": {"optimization_level": "balanced", "max_techniques": 5},
+        "dgeo": {"population_size": 3, "generations": 1, "optimization_level": "balanced"},
+        "shdt": {"max_iterations": 2, "target_score": 8.0, "min_improvement": 0.2},
+        "cdraf": {"max_rounds": 2, "optimization_level": "balanced", "max_techniques": 5},
+        "unified": {"optimization_level": "balanced", "max_techniques": 5},
+    },
+    "balanced": {
+        "standard": {"optimization_level": "balanced", "max_techniques": 5},
+        "dgeo": {"population_size": 4, "generations": 2, "optimization_level": "balanced"},
+        "shdt": {"max_iterations": 3, "target_score": 8.5, "min_improvement": 0.2},
+        "cdraf": {"max_rounds": 2, "optimization_level": "balanced", "max_techniques": 5},
+        "unified": {"optimization_level": "balanced", "max_techniques": 5},
+    },
+    "paper": {
+        "standard": {"optimization_level": "aggressive", "max_techniques": 8},
+        "dgeo": {
+            "population_size": Config.DGEO_POPULATION_SIZE,
+            "generations": Config.DGEO_GENERATIONS,
+            "optimization_level": "aggressive"
+        },
+        "shdt": {
+            "max_iterations": Config.SHDT_MAX_ITERATIONS,
+            "target_score": Config.SHDT_TARGET_SCORE,
+            "min_improvement": Config.SHDT_MIN_IMPROVEMENT
+        },
+        "cdraf": {
+            "max_rounds": Config.CDRAF_MAX_ROUNDS,
+            "optimization_level": "aggressive",
+            "max_techniques": 8
+        },
+        "unified": {"optimization_level": "aggressive", "max_techniques": 8},
+    },
+}
+
+
+def set_reproducibility_seed(seed: int) -> None:
+    """Seed local PRNGs for deterministic bookkeeping and bootstrap sampling."""
+    random.seed(seed)
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except ImportError:
+        pass
+
+
+def get_strategy_profile(strategy: str, evaluation_profile: str) -> Dict[str, Any]:
+    """Resolve strategy configuration for the selected evaluation profile."""
+    profile = EVALUATION_PROFILES.get(evaluation_profile, EVALUATION_PROFILES["balanced"])
+    return profile.get(strategy, {})
+
+
+def build_run_slug(
+    benchmark_file: str,
+    strategies: List[str],
+    active_providers: List[Optional[str]],
+    benchmark_buckets: Optional[List[str]],
+    benchmark_split: Optional[str],
+    repeats: int,
+    evaluation_profile: str,
+    seed: int,
+    run_name: Optional[str] = None,
+) -> str:
+    """Build a stable run identifier for checkpoint/resume support."""
+    if run_name:
+        return run_name
+    payload = json.dumps({
+        "benchmark_file": os.path.abspath(benchmark_file),
+        "strategies": strategies,
+        "providers": active_providers,
+        "benchmark_buckets": benchmark_buckets or [],
+        "benchmark_split": benchmark_split,
+        "repeats": repeats,
+        "evaluation_profile": evaluation_profile,
+        "seed": seed,
+    }, sort_keys=True)
+    digest = hashlib.md5(payload.encode("utf-8")).hexdigest()[:10]
+    return f"eval_{digest}"
+
+
+def load_checkpoint(checkpoint_path: str) -> Optional[Dict[str, Any]]:
+    """Load checkpoint if it exists and is valid JSON."""
+    if not checkpoint_path or not os.path.exists(checkpoint_path):
+        return None
+    with open(checkpoint_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_checkpoint(checkpoint_path: str, payload: Dict[str, Any]) -> None:
+    """Atomically persist checkpoint progress to disk."""
+    tmp_path = f"{checkpoint_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, default=str)
+    os.replace(tmp_path, checkpoint_path)
+
+
+def prompt_result_has_failures(prompt_result: Dict[str, Any], strategies: List[str]) -> bool:
+    """Return True if a saved prompt result should be retried."""
+    if not isinstance(prompt_result, dict):
+        return True
+    if prompt_result.get("skipped"):
+        return True
+    strategy_results = prompt_result.get("strategies", {})
+    if not strategy_results:
+        return True
+    for strategy in strategies:
+        result = strategy_results.get(strategy)
+        if not isinstance(result, dict):
+            return True
+        if result.get("status") != "success":
+            return True
+    return False
 
 # ============================================================
 # Statistical Functions
@@ -144,6 +269,7 @@ async def run_strategy(
     analysis: Dict,
     context: Dict,
     provider: Optional[str] = None,
+    evaluation_profile: str = "balanced",
 ) -> Dict[str, Any]:
     """
     Run a single optimization strategy on a prompt.
@@ -155,15 +281,19 @@ async def run_strategy(
     result: Dict[str, Any] = {
         "strategy": strategy,
         "status": "success",
+        "evaluation_profile": evaluation_profile,
     }
 
     start_time = time.time()
+    profile = get_strategy_profile(strategy, evaluation_profile)
 
     try:
         if strategy == "standard":
             opt = await optimizer.optimize(
                 prompt=prompt, context=context,
-                optimization_level="balanced", analysis=analysis
+                optimization_level=profile.get("optimization_level", "balanced"),
+                max_techniques=profile.get("max_techniques", 5),
+                analysis=analysis
             )
             optimized_prompt = opt.get("optimized_prompt", prompt)
             after_analysis = opt.get("after_analysis", {})
@@ -174,7 +304,9 @@ async def run_strategy(
             dgeo = DGEOOptimizer()
             opt = await dgeo.optimize(
                 prompt=prompt, context=context, analysis=analysis,
-                population_size=3, generations=1
+                population_size=profile.get("population_size", 4),
+                generations=profile.get("generations", 2),
+                optimization_level=profile.get("optimization_level", "balanced"),
             )
             optimized_prompt = opt.get("best_prompt", prompt)
             after_analysis = opt.get("after_analysis", {})
@@ -183,7 +315,9 @@ async def run_strategy(
         elif strategy == "shdt":
             opt = await optimizer.optimize_with_trajectory(
                 prompt=prompt, context=context, analysis=analysis,
-                max_iterations=2, target_score=8.0
+                max_iterations=profile.get("max_iterations", 3),
+                target_score=profile.get("target_score", 8.5),
+                min_improvement=profile.get("min_improvement", 0.2),
             )
             optimized_prompt = opt.get("final_prompt", prompt)
             after_analysis = opt.get("after_analysis", {})
@@ -193,12 +327,14 @@ async def run_strategy(
             # Standard optimize first, then refine with agents
             std_opt = await optimizer.optimize(
                 prompt=prompt, context=context,
-                optimization_level="balanced", analysis=analysis
+                optimization_level=profile.get("optimization_level", "balanced"),
+                max_techniques=profile.get("max_techniques", 5),
+                analysis=analysis
             )
             std_prompt = std_opt.get("optimized_prompt", prompt) if isinstance(std_opt, dict) else prompt
             refined = await optimizer.refine_with_agents(
                 optimized_prompt=std_prompt,
-                context=context, max_rounds=2
+                context=context, max_rounds=profile.get("max_rounds", 2)
             )
             if not isinstance(refined, dict):
                 raise ValueError(f"CDRAF returned {type(refined).__name__} instead of dict")
@@ -209,7 +345,8 @@ async def run_strategy(
         elif strategy == "unified":
             opt = await optimizer.optimize_unified(
                 prompt=prompt, context=context, analysis=analysis,
-                optimization_level="balanced", max_techniques=5,
+                optimization_level=profile.get("optimization_level", "balanced"),
+                max_techniques=profile.get("max_techniques", 5),
                 task_type=context.get("task_type", "general"),
                 domain=context.get("domain", "general")
             )
@@ -258,9 +395,14 @@ async def run_single_prompt(
     prompt_data: Dict,
     strategies: List[str],
     provider: Optional[str] = None,
+    repeats: int = 1,
+    evaluation_profile: str = "balanced",
+    bootstrap_samples: int = 2000,
+    seed: int = 42,
 ) -> Dict[str, Any]:
     """Run all strategies on a single benchmark prompt."""
     orchestrator = get_orchestrator()
+    comparison_engine = get_comparison_engine(seed=seed)
 
     context = {
         "task_type": prompt_data.get("task_type", "general"),
@@ -287,10 +429,18 @@ async def run_single_prompt(
                     "id": prompt_data["id"],
                     "category": prompt_data.get("category", "general"),
                     "task_type": prompt_data.get("task_type", "general"),
+                    "domain": prompt_data.get("domain", "general"),
+                    "difficulty": prompt_data.get("difficulty", "unknown"),
+                    "source": prompt_data.get("source", "unknown"),
+                    "benchmark_bucket": prompt_data.get("benchmark_bucket", "unknown"),
+                    "benchmark_split": prompt_data.get("benchmark_split", "public_test"),
                     "prompt_preview": prompt_data["prompt"][:80],
+                    "human_score": prompt_data.get("human_score"),
+                    "expected_defects": prompt_data.get("expected_defects", []),
                     "baseline": {
                         "score": 0, "total_defects": 0, "high_severity_defects": 0,
-                        "consensus": 0, "tokens": 0, "cost": 0,
+                        "consensus": 0, "tokens": 0, "cost": 0, "processing_time_ms": 0,
+                        "detected_defect_ids": [],
                     },
                     "strategies": {},
                     "skipped": True,
@@ -298,12 +448,20 @@ async def run_single_prompt(
                 }
 
     baseline = extract_analysis_metrics(analysis)
+    detected_defect_ids = [d.get("id") for d in baseline["defects"]]
 
     prompt_result = {
         "id": prompt_data["id"],
         "category": prompt_data.get("category", "general"),
         "task_type": prompt_data.get("task_type", "general"),
+        "domain": prompt_data.get("domain", "general"),
+        "difficulty": prompt_data.get("difficulty", "unknown"),
+        "source": prompt_data.get("source", "unknown"),
+        "benchmark_bucket": prompt_data.get("benchmark_bucket", "unknown"),
+        "benchmark_split": prompt_data.get("benchmark_split", "public_test"),
         "prompt_preview": prompt_data["prompt"][:80],
+        "human_score": prompt_data.get("human_score"),
+        "expected_defects": prompt_data.get("expected_defects", []),
         "baseline": {
             "score": baseline["score"],
             "total_defects": baseline["total_defects"],
@@ -311,19 +469,36 @@ async def run_single_prompt(
             "consensus": baseline["consensus"],
             "tokens": baseline["total_tokens"],
             "cost": baseline["total_cost"],
+            "processing_time_ms": baseline["processing_time_ms"],
+            "detected_defect_ids": detected_defect_ids,
         },
         "strategies": {},
     }
 
     # Step 2: Run all strategies IN PARALLEL for speed
     async def _run_and_save(strategy):
-        strat_result = await run_strategy(
-            prompt=prompt_data["prompt"],
-            strategy=strategy,
-            analysis=analysis,
-            context=context,
-            provider=provider,
+        trial_results = []
+        for trial_index in range(repeats):
+            strat_result = await run_strategy(
+                prompt=prompt_data["prompt"],
+                strategy=strategy,
+                analysis=analysis,
+                context=context,
+                provider=provider,
+                evaluation_profile=evaluation_profile,
+            )
+            strat_result["trial_index"] = trial_index + 1
+            trial_results.append(strat_result)
+
+        strat_result = comparison_engine.summarize_trials(
+            trial_results,
+            baseline_score=baseline["score"],
+            n_bootstrap=bootstrap_samples,
         )
+        strat_result["strategy"] = strategy
+        strat_result["evaluation_profile"] = evaluation_profile
+        strat_result["bootstrap_samples"] = bootstrap_samples
+
         # Save to database
         if strat_result["status"] == "success":
             try:
@@ -565,6 +740,47 @@ def generate_table5_anova(results: List[Dict], strategies: List[str]) -> str:
     return "\n".join(lines)
 
 
+def generate_table0_benchmark_quality(
+    dataset_summary: Dict[str, Any],
+    alignment_summary: Dict[str, Any],
+    score_alignment: Dict[str, Any]
+) -> str:
+    """Table 0: Benchmark composition and detector sanity checks."""
+    lines = []
+    lines.append("\n" + "=" * 90)
+    lines.append("  TABLE 0: Benchmark Quality and Baseline Alignment")
+    lines.append("=" * 90)
+    lines.append(f"  Prompts: {dataset_summary.get('num_prompts', 0)}")
+    lines.append(f"  Avg human score: {dataset_summary.get('avg_human_score', 0.0):.2f}")
+    lines.append(f"  Avg expected defects: {dataset_summary.get('avg_expected_defects', 0.0):.2f}")
+    lines.append(f"  Categories: {dataset_summary.get('category_distribution', {})}")
+    lines.append(f"  Difficulties: {dataset_summary.get('difficulty_distribution', {})}")
+    lines.append("")
+    lines.append("  Expected-vs-detected defect overlap:")
+    lines.append(
+        f"    Macro P/R/F1/Jaccard: "
+        f"{alignment_summary.get('macro_precision', 0.0):.3f} / "
+        f"{alignment_summary.get('macro_recall', 0.0):.3f} / "
+        f"{alignment_summary.get('macro_f1', 0.0):.3f} / "
+        f"{alignment_summary.get('macro_jaccard', 0.0):.3f}"
+    )
+    lines.append(
+        f"    Micro P/R/F1: "
+        f"{alignment_summary.get('micro_precision', 0.0):.3f} / "
+        f"{alignment_summary.get('micro_recall', 0.0):.3f} / "
+        f"{alignment_summary.get('micro_f1', 0.0):.3f}"
+    )
+    if score_alignment:
+        lines.append(
+            f"  Human-score alignment: "
+            f"Pearson r={score_alignment.get('pearson_r', 0.0):.3f} "
+            f"(p={score_alignment.get('pearson_p', 1.0):.4f}), "
+            f"Spearman rho={score_alignment.get('spearman_rho', 0.0):.3f} "
+            f"(p={score_alignment.get('spearman_p', 1.0):.4f})"
+        )
+    return "\n".join(lines)
+
+
 def generate_technique_effectiveness(results: List[Dict]) -> str:
     """Table 6: Technique Effectiveness Summary"""
     lines = []
@@ -607,6 +823,106 @@ def generate_technique_effectiveness(results: List[Dict]) -> str:
         display_id = str(tid or "unknown")[:8]
         display_name = str(data.get('name') or display_id)[:35]
         lines.append(f"  {display_id:<8} {display_name:<35} {data['count']:>5} {avg_imp:>+12.2f}")
+
+    return "\n".join(lines)
+
+
+def generate_table6_pairwise(pairwise_results: List[Any]) -> str:
+    """Table 6: Pairwise strategy comparisons with corrected significance."""
+    lines = []
+    lines.append("\n" + "=" * 120)
+    lines.append("  TABLE 6: Pairwise Strategy Comparison (within-prompt, Holm-corrected)")
+    lines.append("=" * 120)
+    lines.append(
+        f"  {'A':<12} {'B':<12} {'N':>4} {'Delta':>8} {'Median':>8} "
+        f"{'Wins':>12} {'d':>7} {'p_wilcox':>11} {'p_corr':>11} {'Sig':>6}"
+    )
+    lines.append("  " + "-" * 102)
+
+    if not pairwise_results:
+        lines.append("  No pairwise comparisons available.")
+        return "\n".join(lines)
+
+    for row in pairwise_results:
+        wins = f"{row.wins_a}/{row.wins_b}/{row.ties}"
+        p_w = f"{row.p_value_wilcoxon:.4f}" if row.p_value_wilcoxon is not None else "N/A"
+        p_c = f"{row.p_value_corrected:.4f}" if row.p_value_corrected is not None else "N/A"
+        sig = "yes" if row.significant else "no"
+        lines.append(
+            f"  {row.strategy_a:<12} {row.strategy_b:<12} {row.n:>4} "
+            f"{row.mean_delta:>+8.2f} {row.median_delta:>+8.2f} "
+            f"{wins:>12} {row.cohens_d:>7.2f} {p_w:>11} {p_c:>11} {sig:>6}"
+        )
+    return "\n".join(lines)
+
+
+def generate_table8_trial_stability(results: List[Dict], strategies: List[str]) -> str:
+    """Table 8: repeated-trial stability and failure rates."""
+    lines = []
+    lines.append("\n" + "=" * 90)
+    lines.append("  TABLE 8: Repeated-Trial Stability and Reliability")
+    lines.append("=" * 90)
+    lines.append(
+        f"  {'Strategy':<12} {'N':>4} {'Trials':>8} {'SuccRate':>10} "
+        f"{'Score SD':>9} {'Score CV':>9} {'Mean CI95':>18}"
+    )
+    lines.append("  " + "-" * 82)
+
+    for strat in strategies:
+        entries = [
+            r["strategies"].get(strat, {})
+            for r in results
+            if r["strategies"].get(strat, {}).get("status") == "success"
+        ]
+        if not entries:
+            lines.append(f"  {strat:<12} {'N/A':>4}")
+            continue
+
+        n = len(entries)
+        trials = [e.get("num_trials", 1) for e in entries]
+        success_rates = [e.get("trial_success_rate", 0.0) for e in entries]
+        score_std = [e.get("stability", {}).get("score_std", 0.0) for e in entries]
+        score_cv = [e.get("stability", {}).get("score_cv", 0.0) for e in entries]
+        ci_widths = []
+        for e in entries:
+            ci = e.get("improvement_ci95", [0.0, 0.0])
+            ci_widths.append(f"[{ci[0]:+.2f},{ci[1]:+.2f}]")
+
+        lines.append(
+            f"  {strat:<12} {n:>4} {mean(trials):>8.1f} {mean(success_rates):>10.2%} "
+            f"{mean(score_std):>9.3f} {mean(score_cv):>9.3f} {ci_widths[0]:>18}"
+        )
+
+    return "\n".join(lines)
+
+
+def generate_table9_by_bucket(results: List[Dict], strategies: List[str]) -> str:
+    """Table 9: score improvement by benchmark bucket."""
+    lines = []
+    lines.append("\n" + "=" * 100)
+    lines.append("  TABLE 9: Score Improvement by Benchmark Bucket")
+    lines.append("=" * 100)
+
+    buckets = sorted(set(r.get("benchmark_bucket", "unknown") for r in results))
+    header = f"  {'Bucket':<22}"
+    for strat in strategies:
+        header += f" {strat:>12}"
+    lines.append(header)
+    lines.append("  " + "-" * (22 + 13 * len(strategies)))
+
+    for bucket in buckets:
+        row = f"  {bucket:<22}"
+        for strat in strategies:
+            improvements = []
+            for r in results:
+                if r.get("benchmark_bucket") != bucket:
+                    continue
+                s = r["strategies"].get(strat, {})
+                if s.get("status") != "success":
+                    continue
+                improvements.append(s.get("improvement_mean", s.get("score_after", 0.0) - r["baseline"]["score"]))
+            row += f" {mean(improvements):>+12.2f}" if improvements else f" {'N/A':>12}"
+        lines.append(row)
 
     return "\n".join(lines)
 
@@ -701,30 +1017,79 @@ async def _run_single_provider(
     prompts: List[Dict],
     strategies: List[str],
     provider: str,
+    repeats: int,
+    evaluation_profile: str,
+    bootstrap_samples: int,
+    seed: int,
+    existing_results: Optional[List[Dict[str, Any]]] = None,
+    checkpoint_path: Optional[str] = None,
+    checkpoint_payload: Optional[Dict[str, Any]] = None,
+    retry_failed: bool = False,
 ) -> List[Dict]:
     """Run all prompts for one provider. Returns list of prompt results."""
-    results = []
+    provider_label = provider or "default"
+    results = list(existing_results or [])
+    completed_by_id = {
+        item.get("id"): item for item in results
+        if isinstance(item, dict) and item.get("id")
+    }
     n = len(prompts)
     for i, prompt_data in enumerate(prompts):
-        print(f"  [{provider}] [{i+1}/{n}] {prompt_data['id']} ({prompt_data.get('category', '?')}): "
+        prompt_id = prompt_data["id"]
+        if prompt_id in completed_by_id:
+            prior_result = completed_by_id[prompt_id]
+            if retry_failed and prompt_result_has_failures(prior_result, strategies):
+                print(f"  [{provider_label}] [{i+1}/{n}] {prompt_id}: retrying failed result")
+                results = [item for item in results if item.get("id") != prompt_id]
+                completed_by_id.pop(prompt_id, None)
+            else:
+                print(f"  [{provider_label}] [{i+1}/{n}] {prompt_id}: already completed, skipping")
+                continue
+        print(f"  [{provider_label}] [{i+1}/{n}] {prompt_data['id']} ({prompt_data.get('category', '?')}): "
               f"{prompt_data['prompt'][:50]}...")
         sys.stdout.flush()
         try:
-            prompt_result = await run_single_prompt(prompt_data, strategies, provider)
+            prompt_result = await run_single_prompt(
+                prompt_data,
+                strategies,
+                provider,
+                repeats=repeats,
+                evaluation_profile=evaluation_profile,
+                bootstrap_samples=bootstrap_samples,
+                seed=seed,
+            )
         except Exception as e:
-            logger.error(f"[{provider}] Prompt {prompt_data['id']} failed: {e}")
+            logger.error(f"[{provider_label}] Prompt {prompt_data['id']} failed: {e}")
             print(f"    SKIPPED - {str(e)[:60]}")
             prompt_result = {
                 "id": prompt_data["id"],
                 "category": prompt_data.get("category", "general"),
                 "task_type": prompt_data.get("task_type", "general"),
+                "domain": prompt_data.get("domain", "general"),
+                "difficulty": prompt_data.get("difficulty", "unknown"),
+                "source": prompt_data.get("source", "unknown"),
+                "benchmark_bucket": prompt_data.get("benchmark_bucket", "unknown"),
+                "benchmark_split": prompt_data.get("benchmark_split", "public_test"),
                 "prompt_preview": prompt_data["prompt"][:80],
-                "baseline": {"score": 0, "total_defects": 0, "high_severity_defects": 0, "consensus": 0, "tokens": 0, "cost": 0},
+                "human_score": prompt_data.get("human_score"),
+                "expected_defects": prompt_data.get("expected_defects", []),
+                "baseline": {
+                    "score": 0, "total_defects": 0, "high_severity_defects": 0,
+                    "consensus": 0, "tokens": 0, "cost": 0, "processing_time_ms": 0,
+                    "detected_defect_ids": []
+                },
                 "strategies": {},
                 "skipped": True,
                 "skip_reason": str(e),
             }
         results.append(prompt_result)
+        completed_by_id[prompt_id] = prompt_result
+
+        if checkpoint_path and checkpoint_payload is not None:
+            checkpoint_payload.setdefault("results_by_provider", {})
+            checkpoint_payload["results_by_provider"][provider_label] = results
+            checkpoint_payload["updated_at"] = datetime.now().isoformat()
+            save_checkpoint(checkpoint_path, checkpoint_payload)
 
         if prompt_result.get("skipped"):
             print(f"    SKIPPED: {prompt_result.get('skip_reason', '')[:60]}")
@@ -747,13 +1112,43 @@ async def run_evaluation(
     provider: Optional[str] = None,
     providers: Optional[List[str]] = None,
     output_dir: str = DEFAULT_OUTPUT_DIR,
+    benchmark_file: str = BENCHMARK_FILE,
+    repeats: int = 1,
+    evaluation_profile: str = "balanced",
+    bootstrap_samples: int = 2000,
+    seed: int = 42,
+    benchmark_buckets: Optional[List[str]] = None,
+    benchmark_split: Optional[str] = None,
+    judge_provider: Optional[str] = None,
+    judge_model: Optional[str] = None,
+    run_name: Optional[str] = None,
+    checkpoint_file: Optional[str] = None,
+    resume: bool = False,
+    retry_failed: bool = False,
 ):
     """Run the full research evaluation. Supports single or multi-provider mode."""
+    set_reproducibility_seed(seed)
+    comparison_engine = get_comparison_engine(seed=seed)
+    quality_scorer = get_quality_scorer()
+    if judge_provider:
+        Config.JUDGE_PROVIDER = judge_provider
+    if judge_model:
+        Config.JUDGE_MODEL = judge_model
+
     # Load benchmarks
-    with open(BENCHMARK_FILE, "r", encoding="utf-8") as f:
+    with open(benchmark_file, "r", encoding="utf-8") as f:
         all_prompts = json.load(f)
+    all_prompts = annotate_prompt_records(all_prompts)
+    if benchmark_buckets or benchmark_split:
+        all_prompts = filter_prompt_records(
+            all_prompts,
+            buckets=benchmark_buckets,
+            split=benchmark_split
+        )
     if limit:
         all_prompts = all_prompts[:limit]
+    dataset_summary = quality_scorer.summarize_dataset(all_prompts)
+    bucket_summary = summarize_buckets(all_prompts)
 
     # Resolve provider list
     if providers and len(providers) > 1:
@@ -761,31 +1156,98 @@ async def run_evaluation(
     else:
         active_providers = [provider] if provider else [None]
 
+    run_slug = build_run_slug(
+        benchmark_file=benchmark_file,
+        strategies=strategies,
+        active_providers=active_providers,
+        benchmark_buckets=benchmark_buckets,
+        benchmark_split=benchmark_split,
+        repeats=repeats,
+        evaluation_profile=evaluation_profile,
+        seed=seed,
+        run_name=run_name,
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    checkpoint_path = checkpoint_file or os.path.join(output_dir, f"{run_slug}_checkpoint.json")
+    checkpoint_state = load_checkpoint(checkpoint_path) if resume else None
+    existing_provider_results: Dict[str, List[Dict]] = {}
+    if checkpoint_state:
+        existing_provider_results = checkpoint_state.get("results_by_provider", {}) or {}
+
     n_prompts = len(all_prompts)
     n_strategies = len(strategies)
-    multi_mode = len(active_providers) > 1 or (len(active_providers) == 1 and active_providers[0] is not None and providers)
 
     print(f"\n{'=' * 70}")
     print(f"  PromptOptimizer Pro — Research Evaluation")
     print(f"  {n_prompts} prompts x {n_strategies} strategies")
     print(f"  Strategies: {', '.join(strategies)}")
+    print(f"  Repeats:    {repeats} trial(s) per prompt/strategy")
+    print(f"  Profile:    {evaluation_profile}")
+    print(f"  Seed:       {seed}")
+    print(f"  Run Name:   {run_slug}")
+    print(f"  Checkpoint: {checkpoint_path}")
+    if benchmark_buckets:
+        print(f"  Buckets:    {', '.join(benchmark_buckets)}")
+    if benchmark_split:
+        print(f"  Split:      {benchmark_split}")
+    print(f"  Judge:      {Config.JUDGE_PROVIDER}/{Config.JUDGE_MODEL}")
     if len(active_providers) > 1:
         print(f"  Providers:  {', '.join(str(p) for p in active_providers)} (cross-provider mode)")
     else:
         print(f"  Provider:   {active_providers[0] or 'default'}")
     print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'=' * 70}\n")
+    print(f"  Benchmark categories: {dataset_summary.get('category_distribution', {})}")
+    print(f"  Benchmark difficulties: {dataset_summary.get('difficulty_distribution', {})}")
+    print(f"  Benchmark sources: {dataset_summary.get('source_distribution', {})}")
+    print(f"  Benchmark buckets: {bucket_summary.get('bucket_distribution', {})}")
+    print(f"  Benchmark splits: {bucket_summary.get('split_distribution', {})}")
+    print()
 
     total_start = time.time()
     provider_results: Dict[str, List[Dict]] = {}
+    checkpoint_payload = checkpoint_state or {
+        "run_slug": run_slug,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "config": {
+            "strategies": strategies,
+            "providers": [p or "default" for p in active_providers],
+            "repeats": repeats,
+            "evaluation_profile": evaluation_profile,
+            "bootstrap_samples": bootstrap_samples,
+            "seed": seed,
+            "benchmark_file": benchmark_file,
+            "benchmark_buckets": benchmark_buckets,
+            "benchmark_split": benchmark_split,
+            "judge_provider": Config.JUDGE_PROVIDER,
+            "judge_model": Config.JUDGE_MODEL,
+        },
+        "results_by_provider": {},
+    }
 
     for prov in active_providers:
         prov_label = prov or "default"
         print(f"\n{'─' * 70}")
         print(f"  Running provider: {prov_label}")
         print(f"{'─' * 70}")
-        results = await _run_single_provider(all_prompts, strategies, prov)
+        results = await _run_single_provider(
+            all_prompts,
+            strategies,
+            prov,
+            repeats=repeats,
+            evaluation_profile=evaluation_profile,
+            bootstrap_samples=bootstrap_samples,
+            seed=seed,
+            existing_results=existing_provider_results.get(prov_label, []),
+            checkpoint_path=checkpoint_path,
+            checkpoint_payload=checkpoint_payload,
+            retry_failed=retry_failed,
+        )
         provider_results[prov_label] = results
+        checkpoint_payload["results_by_provider"][prov_label] = results
+        checkpoint_payload["updated_at"] = datetime.now().isoformat()
+        save_checkpoint(checkpoint_path, checkpoint_payload)
 
     total_elapsed = time.time() - total_start
 
@@ -793,14 +1255,28 @@ async def run_evaluation(
     for prov_label, all_results in provider_results.items():
         n_strategies_val = len(strategies)
         total_runs = n_prompts * n_strategies_val
+        non_skipped = [r for r in all_results if not r.get("skipped")]
+        alignment_summary = quality_scorer.summarize_alignment(non_skipped)
+        baseline_scores = [r.get("baseline", {}).get("score", 0.0) for r in non_skipped]
+        human_scores = [r.get("human_score", 0.0) for r in non_skipped if r.get("human_score") is not None]
+        score_alignment = (
+            comparison_engine.benchmark_correlation(human_scores, baseline_scores)
+            if human_scores and len(human_scores) == len(baseline_scores)
+            else {}
+        )
+        pairwise_results = comparison_engine.pairwise_strategy_comparisons(non_skipped, strategies)
         print(f"\n{'#' * 70}")
         print(f"  RESULTS FOR PROVIDER: {prov_label.upper()}")
         print(f"{'#' * 70}")
+        print(generate_table0_benchmark_quality(dataset_summary, alignment_summary, score_alignment))
         print(generate_table1_score_improvement(all_results, strategies))
         print(generate_table2_severity_reduction(all_results, strategies))
         print(generate_table3_efficiency(all_results, strategies))
         print(generate_table4_by_category(all_results, strategies))
         print(generate_table5_anova(all_results, strategies))
+        print(generate_table6_pairwise(pairwise_results))
+        print(generate_table8_trial_stability(all_results, strategies))
+        print(generate_table9_by_bucket(all_results, strategies))
         print(generate_technique_effectiveness(all_results))
         succ = sum(1 for r in all_results for s in r["strategies"].values() if s.get("status") == "success")
         print(f"\n  Successful runs: {succ}/{total_runs}")
@@ -828,6 +1304,34 @@ async def run_evaluation(
                 "num_prompts": n_prompts,
                 "providers": list(provider_results.keys()),
                 "total_time_seconds": total_elapsed,
+                "repeats": repeats,
+                "evaluation_profile": evaluation_profile,
+                "bootstrap_samples": bootstrap_samples,
+                "seed": seed,
+            },
+            "manifest": {
+                "python_version": sys.version,
+                "platform": platform.platform(),
+                "default_provider": Config.DEFAULT_PROVIDER,
+                "models": {
+                    "anthropic": Config.ANTHROPIC_MODEL,
+                    "groq": Config.GROQ_MODEL,
+                    "openai": Config.OPENAI_MODEL,
+                    "gemini": Config.GEMINI_MODEL,
+                },
+                "judge": {
+                    "provider": Config.JUDGE_PROVIDER,
+                    "model": Config.JUDGE_MODEL,
+                },
+                "benchmark_summary": dataset_summary,
+                "bucket_summary": bucket_summary,
+                "benchmark_filters": {
+                    "benchmark_file": benchmark_file,
+                    "buckets": benchmark_buckets,
+                    "split": benchmark_split,
+                },
+                "run_slug": run_slug,
+                "checkpoint_file": checkpoint_path,
             },
             "results_by_provider": clean_data,
         }, f, indent=2)
@@ -838,19 +1342,23 @@ async def run_evaluation(
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         header = ["provider", "prompt_id", "category", "baseline_score"]
+        header.extend(["benchmark_bucket", "benchmark_split"])
         for strat in strategies:
             header.extend([f"{strat}_score_after", f"{strat}_improvement", f"{strat}_hs_defects_after", f"{strat}_time_ms"])
         writer.writerow(header)
 
         for prov_label, all_results in provider_results.items():
             for r in all_results:
-                row = [prov_label, r["id"], r["category"], r["baseline"]["score"]]
+                row = [
+                    prov_label, r["id"], r["category"], r["baseline"]["score"],
+                    r.get("benchmark_bucket", ""), r.get("benchmark_split", "")
+                ]
                 for strat in strategies:
                     s = r["strategies"].get(strat, {})
                     if s.get("status") == "success":
                         row.extend([
                             s.get("score_after", ""),
-                            round(s.get("score_after", 0) - r["baseline"]["score"], 2),
+                            round(s.get("improvement_mean", s.get("score_after", 0) - r["baseline"]["score"]), 2),
                             s.get("high_severity_after", ""),
                             s.get("processing_time_ms", ""),
                         ])
@@ -890,6 +1398,59 @@ def main():
         "--output-dir", default=DEFAULT_OUTPUT_DIR,
         help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})"
     )
+    parser.add_argument(
+        "--benchmark-file", default=BENCHMARK_FILE,
+        help=f"Benchmark JSON file to load (default: {BENCHMARK_FILE})"
+    )
+    parser.add_argument(
+        "--repeats", type=int, default=1,
+        help="Repeated trials per prompt/strategy to estimate stability (default: 1)"
+    )
+    parser.add_argument(
+        "--evaluation-profile", default="balanced",
+        choices=sorted(EVALUATION_PROFILES.keys()),
+        help="Evaluation rigor/profile: quick, balanced, or paper (default: balanced)"
+    )
+    parser.add_argument(
+        "--bootstrap-samples", type=int, default=2000,
+        help="Bootstrap resamples for confidence intervals (default: 2000)"
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42,
+        help="Seed for reproducible bookkeeping/bootstrap operations (default: 42)"
+    )
+    parser.add_argument(
+        "--benchmark-buckets", default=None,
+        help="Comma-separated benchmark buckets: real_user,instruction_following,code_execution,safety,defect_taxonomy"
+    )
+    parser.add_argument(
+        "--benchmark-split", default=None,
+        help="Benchmark split filter: public_dev, public_test, holdout"
+    )
+    parser.add_argument(
+        "--judge-provider", default=None,
+        help="Independent judge provider override, e.g. gemini"
+    )
+    parser.add_argument(
+        "--judge-model", default=None,
+        help="Independent judge model override, e.g. gemini-3-pro-preview"
+    )
+    parser.add_argument(
+        "--run-name", default=None,
+        help="Stable run name for checkpoint/resume files, e.g. paper25_main"
+    )
+    parser.add_argument(
+        "--checkpoint-file", default=None,
+        help="Explicit checkpoint JSON path for saving and resuming progress"
+    )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume from an existing checkpoint file instead of restarting from scratch"
+    )
+    parser.add_argument(
+        "--retry-failed", action="store_true",
+        help="With --resume, rerun only prompt entries that were skipped or had strategy errors"
+    )
     args = parser.parse_args()
 
     strategies = [s.strip() for s in args.strategies.split(",")]
@@ -908,12 +1469,33 @@ def main():
                 print(f"Error: Unknown provider '{p}'. Choose from: {', '.join(sorted(valid))}")
                 sys.exit(1)
 
+    benchmark_buckets = None
+    if args.benchmark_buckets:
+        benchmark_buckets = [b.strip() for b in args.benchmark_buckets.split(",") if b.strip()]
+
+    if args.benchmark_split and args.benchmark_split not in {"public_dev", "public_test", "holdout"}:
+        print("Error: --benchmark-split must be one of: public_dev, public_test, holdout")
+        sys.exit(1)
+
     asyncio.run(run_evaluation(
         strategies=strategies,
         limit=args.limit,
         provider=args.provider,
         providers=providers_list,
         output_dir=args.output_dir,
+        benchmark_file=args.benchmark_file,
+        repeats=max(1, args.repeats),
+        evaluation_profile=args.evaluation_profile,
+        bootstrap_samples=max(200, args.bootstrap_samples),
+        seed=args.seed,
+        benchmark_buckets=benchmark_buckets,
+        benchmark_split=args.benchmark_split,
+        judge_provider=args.judge_provider,
+        judge_model=args.judge_model,
+        run_name=args.run_name,
+        checkpoint_file=args.checkpoint_file,
+        resume=args.resume,
+        retry_failed=args.retry_failed,
     ))
 
 

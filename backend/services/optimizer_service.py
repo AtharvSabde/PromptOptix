@@ -20,8 +20,7 @@ from ..utils import (
     get_logger,
     OptimizationError,
     count_tokens,
-    validate_optimization_level,
-    parse_json_response
+    validate_optimization_level
 )
 from ..config import Config
 from .agent_orchestrator import get_orchestrator
@@ -197,21 +196,21 @@ class OptimizerService:
             # Call LLM for intelligent rewriting
             provider = context.get("provider") if context else None
             llm_result = await asyncio.to_thread(
-                self.llm_service.call,
+                self.llm_service.call_with_json_response,
                 prompt=optimization_meta_prompt,
                 system_prompt="You are a prompt rewriting specialist. Rewrite prompts to be clearer and more effective. Return only valid JSON.",
                 temperature=0.4,
                 max_tokens=4096,
-                provider=provider
+                provider=provider,
+                required_fields=["optimized_prompt"],
+                default={"optimized_prompt": prompt, "changes_made": []},
+                field_defaults={"optimized_prompt": prompt, "changes_made": []}
             )
 
             # Parse and validate the LLM response
             use_fallback = False
             try:
-                parsed = parse_json_response(
-                    llm_result["response"],
-                    required_fields=["optimized_prompt"]
-                )
+                parsed = llm_result["parsed_response"]
                 optimized_prompt = parsed["optimized_prompt"]
 
                 # Validate: reject if LLM returned a template with placeholders
@@ -810,18 +809,18 @@ class OptimizerService:
             provider = context.get("provider") if context else None
             try:
                 llm_result = await asyncio.to_thread(
-                    self.llm_service.call,
+                    self.llm_service.call_with_json_response,
                     prompt=shdt_prompt,
                     system_prompt="You are a prompt optimization specialist. Study the optimization history to understand what changes helped. Return only valid JSON.",
                     temperature=0.4,
                     max_tokens=4096,
-                    provider=provider
+                    provider=provider,
+                    required_fields=["optimized_prompt"],
+                    default={"optimized_prompt": current_prompt},
+                    field_defaults={"optimized_prompt": current_prompt}
                 )
 
-                parsed = parse_json_response(
-                    llm_result["response"],
-                    required_fields=["optimized_prompt"]
-                )
+                parsed = llm_result["parsed_response"]
                 new_prompt = parsed["optimized_prompt"]
 
                 # Validate output
@@ -1016,19 +1015,18 @@ class OptimizerService:
             provider = context.get("provider") if context else None
             try:
                 llm_result = await asyncio.to_thread(
-                    self.llm_service.call,
+                    self.llm_service.call_with_json_response,
                     prompt=cdraf_prompt,
                     system_prompt="You are a prompt refinement specialist. Address each piece of agent feedback precisely. Return only valid JSON.",
                     temperature=0.3,
                     max_tokens=4096,
-                    provider=provider
+                    provider=provider,
+                    required_fields=["refined_prompt"],
+                    default={"refined_prompt": current_prompt, "issues_addressed": []},
+                    field_defaults={"refined_prompt": current_prompt, "issues_addressed": []}
                 )
 
-                parsed = parse_json_response(
-                    llm_result["response"],
-                    required_fields=["refined_prompt"],
-                    default={"refined_prompt": current_prompt, "issues_addressed": []}
-                )
+                parsed = llm_result["parsed_response"]
 
                 # Defensive: ensure parsed is a dict
                 if not isinstance(parsed, dict):

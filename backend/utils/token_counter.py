@@ -4,7 +4,7 @@ Accurate token counting using tiktoken and cost estimation
 """
 
 import tiktoken
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, Any
 from ..config import Config
 from .logger import get_logger
 

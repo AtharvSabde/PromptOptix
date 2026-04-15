@@ -29,6 +29,19 @@ from ..models.issue_registry import (
 logger = get_logger(__name__)
 
 
+def _stringify_detection_field(value: Any) -> str:
+    """Normalize evidence/explanation fields before aggregation."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return " | ".join(_stringify_detection_field(item) for item in value if item is not None)
+    if isinstance(value, dict):
+        return " | ".join(f"{k}: {_stringify_detection_field(v)}" for k, v in value.items())
+    return str(value)
+
+
 class AgentOrchestrator:
     """
     Coordinates multiple agents and aggregates results with consensus mechanism
@@ -361,8 +374,8 @@ class AgentOrchestrator:
                 defects_by_id[defect["id"]].append({
                     "agent": result["agent"],
                     "confidence": defect["confidence"],
-                    "evidence": defect.get("evidence", ""),
-                    "explanation": defect.get("explanation", ""),
+                    "evidence": _stringify_detection_field(defect.get("evidence", "")),
+                    "explanation": _stringify_detection_field(defect.get("explanation", "")),
                     **defect
                 })
 
@@ -448,7 +461,9 @@ class AgentOrchestrator:
             # Combine evidence from all agents
             all_evidence = [d["evidence"] for d in detections if d.get("evidence")]
             if all_evidence:
-                primary_detection["evidence"] = " | ".join(all_evidence[:3])
+                primary_detection["evidence"] = " | ".join(
+                    _stringify_detection_field(item) for item in all_evidence[:3]
+                )
 
             # Check if defect meets consensus threshold
             if consensus_score >= Config.CONSENSUS_THRESHOLD:

@@ -71,7 +71,7 @@ class Config:
     HOST = os.getenv("HOST", "0.0.0.0")
 
     # ===== LLM Configuration =====
-    DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "anthropic")
+    DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "gemini")
     
     # Model registry with capabilities and pricing
     MODELS = {
@@ -136,14 +136,32 @@ class Config:
             }
         },
         "gemini": {
-            "gemini-3.1-pro-preview": {
-                "name": "Gemini 3.1 Pro Preview",
+            "gemini-2.5-pro": {
+                "name": "Gemini 2.5 Pro",
                 "context_window": 1048576,
                 "max_output": 8192,
                 "cost_per_1k_input": 0.00125,
                 "cost_per_1k_output": 0.005,
                 "supports_streaming": True,
                 "best_for": ["analysis", "optimization", "reasoning", "complex_tasks"]
+            },
+            "gemini-3-pro-preview": {
+                "name": "Gemini 3 Pro Preview",
+                "context_window": 1048576,
+                "max_output": 8192,
+                "cost_per_1k_input": 0.00125,
+                "cost_per_1k_output": 0.005,
+                "supports_streaming": True,
+                "best_for": ["evaluation", "judging", "analysis", "reasoning"]
+            },
+            "gemini-2.5-flash": {
+                "name": "Gemini 2.5 Flash",
+                "context_window": 1048576,
+                "max_output": 8192,
+                "cost_per_1k_input": 0.0003,
+                "cost_per_1k_output": 0.0025,
+                "supports_streaming": True,
+                "best_for": ["fast_analysis", "fast_optimization", "testing"]
             },
             "gemini-2.0-flash": {
                 "name": "Gemini 2.0 Flash",
@@ -170,7 +188,9 @@ class Config:
     ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+    JUDGE_PROVIDER = os.getenv("JUDGE_PROVIDER", "gemini")
+    JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gemini-3-pro-preview")
     
     # ===== Token Limits =====
     MAX_ANALYSIS_TOKENS = int(os.getenv("MAX_ANALYSIS_TOKENS", "4000"))

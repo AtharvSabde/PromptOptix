@@ -27,6 +27,45 @@ from ..utils import (
 logger = get_logger(__name__)
 
 
+JSON_REPAIR_SYSTEM_PROMPT = (
+    "You are a JSON repair system. "
+    "Your only job is to convert malformed model output into a valid JSON object. "
+    "Do not add commentary. Do not wrap in markdown. Return only valid JSON."
+)
+
+
+STRICT_JSON_RETRY_SYSTEM_PROMPT = (
+    "You are a strict JSON generation system. "
+    "Return exactly one valid JSON object and nothing else. "
+    "Do not use markdown. Do not omit required fields. "
+    "Use null or empty arrays/strings only when necessary to keep the schema valid."
+)
+
+
+def _is_transient_llm_error(error: Exception) -> bool:
+    """Return True for retryable provider-side failures."""
+    if isinstance(error, RateLimitError):
+        return True
+    if not isinstance(error, LLMServiceError):
+        return False
+
+    message = str(error).lower()
+    transient_markers = (
+        "503",
+        "unavailable",
+        "timeout",
+        "timed out",
+        "temporarily unavailable",
+        "connection reset",
+        "connection aborted",
+        "internal server error",
+        "server error",
+        "bad gateway",
+        "gateway timeout",
+    )
+    return any(marker in message for marker in transient_markers)
+
+
 class LLMService:
     """
     Singleton service for making LLM API calls
@@ -492,6 +531,8 @@ class LLMService:
             model = Config.GEMINI_MODEL
 
         try:
+            json_mode = kwargs.pop("json_mode", False)
+            response_schema = kwargs.pop("response_schema", None)
             input_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
             input_tokens = count_tokens(input_text, model)
 
@@ -500,10 +541,18 @@ class LLMService:
                 extra={"model": model, "input_tokens": input_tokens, "max_tokens": max_tokens}
             )
 
+            config_kwargs = {
+                "max_output_tokens": max_tokens,
+                "temperature": temperature,
+                "system_instruction": system_prompt if system_prompt else None
+            }
+            if json_mode:
+                config_kwargs["response_mime_type"] = "application/json"
+            if response_schema is not None:
+                config_kwargs["response_schema"] = response_schema
+
             config = genai.types.GenerateContentConfig(
-                max_output_tokens=max_tokens,
-                temperature=temperature,
-                system_instruction=system_prompt if system_prompt else None
+                **config_kwargs
             )
 
             response = self.gemini_client.models.generate_content(
@@ -608,6 +657,11 @@ class LLMService:
             )
 
         # Route to the correct provider — NO fallback, errors propagate directly
+        max_retries = int(kwargs.pop("max_retries", 2))
+        retry_base_delay = float(kwargs.pop("retry_base_delay", 2.0))
+        json_mode = bool(kwargs.pop("json_mode", False))
+        response_schema = kwargs.pop("response_schema", None)
+
         call_args = dict(
             prompt=prompt,
             system_prompt=system_prompt,
@@ -618,19 +672,47 @@ class LLMService:
         )
 
         if provider == "anthropic":
-            return self._call_anthropic(**call_args)
+            provider_call = self._call_anthropic
         elif provider == "groq":
-            return self._call_groq(**call_args)
+            provider_call = self._call_groq
         elif provider == "openai":
-            return self._call_openai(**call_args)
+            provider_call = self._call_openai
+            if json_mode:
+                call_args["response_format"] = {"type": "json_object"}
         elif provider == "gemini":
-            return self._call_gemini(**call_args)
+            provider_call = self._call_gemini
+            if json_mode:
+                call_args["json_mode"] = True
+            if response_schema is not None:
+                call_args["response_schema"] = response_schema
+
+        delay = retry_base_delay
+        for attempt in range(max_retries + 1):
+            try:
+                return provider_call(**call_args)
+            except Exception as e:
+                if attempt >= max_retries or not _is_transient_llm_error(e):
+                    raise
+                logger.warning(
+                    "Transient LLM call failure; retrying",
+                    extra={
+                        "provider": provider,
+                        "attempt": attempt + 1,
+                        "max_retries": max_retries,
+                        "delay_seconds": delay,
+                        "error": str(e),
+                    }
+                )
+                time.sleep(delay)
+                delay *= 2
     
     def call_with_json_response(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
         required_fields: Optional[List[str]] = None,
+        default: Optional[Dict[str, Any]] = None,
+        field_defaults: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -651,15 +733,66 @@ class LLMService:
         Raises:
             ResponseParseError: If JSON parsing fails
         """
+        provider = kwargs.get("provider")
+        if provider is None:
+            provider = Config.DEFAULT_PROVIDER
+        kwargs["json_mode"] = True
+
         # Make API call
         result = self.call(prompt=prompt, system_prompt=system_prompt, **kwargs)
-        
-        # Parse JSON response
-        parsed = parse_json_response(
-            result["response"],
-            required_fields=required_fields
-        )
-        
+
+        parsed = None
+
+        # Parse JSON response strictly first so malformed payloads trigger
+        # repair/regeneration instead of silently collapsing to the caller's default.
+        try:
+            parsed = parse_json_response(
+                result["response"],
+                required_fields=required_fields,
+                default=None
+            )
+        except Exception as parse_error:
+            logger.warning(
+                "Initial JSON parse failed; attempting repair pass",
+                extra={
+                    "provider": result.get("provider"),
+                    "model": result.get("model"),
+                    "error": str(parse_error)
+                }
+            )
+            try:
+                parsed = self._repair_json_response(
+                    raw_response=result["response"],
+                    required_fields=required_fields,
+                    provider=result.get("provider"),
+                    model=result.get("model"),
+                    max_tokens=kwargs.get("max_tokens", 4096),
+                    default=default
+                )
+            except Exception as repair_error:
+                logger.warning(
+                    "JSON repair pass failed; attempting strict regeneration pass",
+                    extra={
+                        "provider": result.get("provider"),
+                        "model": result.get("model"),
+                        "error": str(repair_error)
+                    }
+                )
+                parsed = self._regenerate_json_response(
+                    original_prompt=prompt,
+                    original_system_prompt=system_prompt,
+                    required_fields=required_fields,
+                    provider=result.get("provider"),
+                    model=result.get("model"),
+                    max_tokens=kwargs.get("max_tokens", 4096),
+                    default=default
+                )
+
+        if parsed is None:
+            parsed = default if default is not None else {}
+
+        parsed = self._apply_field_defaults(parsed, field_defaults)
+
         return {
             "parsed_response": parsed,
             "raw_response": result["response"],
@@ -670,6 +803,126 @@ class LLMService:
                 "cost": result["cost"]
             }
         }
+
+    def _repair_json_response(
+        self,
+        raw_response: str,
+        required_fields: Optional[List[str]] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        max_tokens: int = 4096,
+        default: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Ask the model to repair malformed JSON into a valid JSON object."""
+        required_fields_text = ", ".join(required_fields or [])
+        repair_prompt = (
+            "The previous response was intended to be valid JSON but could not be parsed.\n\n"
+            "Repair it into a syntactically valid JSON object.\n"
+            "Keep the original meaning whenever possible.\n"
+            "Do not omit required fields.\n"
+            f"Required fields: {required_fields_text or 'none'}\n\n"
+            "Malformed response:\n"
+            "```text\n"
+            f"{raw_response}\n"
+            "```\n\n"
+            "Return only the repaired JSON object."
+        )
+
+        repair_result = self.call(
+            prompt=repair_prompt,
+            system_prompt=JSON_REPAIR_SYSTEM_PROMPT,
+            provider=provider,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=0.0,
+            json_mode=True
+        )
+
+        parsed = parse_json_response(
+            repair_result["response"],
+            required_fields=required_fields,
+            default=default
+        )
+
+        logger.info(
+            "JSON repair pass succeeded",
+            extra={
+                "provider": provider,
+                "model": model
+            }
+        )
+
+        return parsed
+
+    def _regenerate_json_response(
+        self,
+        original_prompt: str,
+        original_system_prompt: Optional[str] = None,
+        required_fields: Optional[List[str]] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        max_tokens: int = 4096,
+        default: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Retry the original task with a stricter JSON-only instruction."""
+        required_fields_text = ", ".join(required_fields or [])
+        retry_prompt = (
+            "Repeat the task and return only one valid JSON object.\n"
+            f"Required fields: {required_fields_text or 'none'}\n\n"
+            "Original task:\n"
+            "```text\n"
+            f"{original_prompt}\n"
+            "```"
+        )
+
+        if original_system_prompt:
+            retry_prompt += (
+                "\n\nOriginal system instructions:\n"
+                "```text\n"
+                f"{original_system_prompt}\n"
+                "```"
+            )
+
+        retry_result = self.call(
+            prompt=retry_prompt,
+            system_prompt=STRICT_JSON_RETRY_SYSTEM_PROMPT,
+            provider=provider,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=0.0,
+            json_mode=True
+        )
+
+        parsed = parse_json_response(
+            retry_result["response"],
+            required_fields=required_fields,
+            default=default
+        )
+
+        logger.info(
+            "Strict JSON regeneration pass succeeded",
+            extra={
+                "provider": provider,
+                "model": model
+            }
+        )
+
+        return parsed
+
+    def _apply_field_defaults(
+        self,
+        parsed: Any,
+        field_defaults: Optional[Dict[str, Any]] = None
+    ) -> Any:
+        """Fill missing or null fields after parsing."""
+        if not isinstance(parsed, dict) or not field_defaults:
+            return parsed
+
+        normalized = dict(parsed)
+        for field, default_value in field_defaults.items():
+            if normalized.get(field) is None:
+                normalized[field] = default_value
+        return normalized
     
     def batch_call(
         self,

@@ -16,6 +16,29 @@ from ..services.llm_service import get_llm_service
 from ..models.defect_taxonomy import DefectDefinition, get_defect_by_id
 
 
+def _stringify_field(value: Any) -> str:
+    """Normalize LLM fields that may come back as strings, lists, or objects."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return " | ".join(_stringify_field(item) for item in value if item is not None)
+    if isinstance(value, dict):
+        return " | ".join(f"{k}: {_stringify_field(v)}" for k, v in value.items())
+    return str(value)
+
+
+def _coerce_float(value: Any, default: float) -> float:
+    """Convert possibly-missing numeric fields from model output safely."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 class BaseAgent(ABC):
     """
     Abstract base class for all defect detection agents
@@ -149,6 +172,8 @@ class BaseAgent(ABC):
                 temperature=0.3,
                 max_tokens=4096,
                 required_fields=["defects", "overall_score"],
+                default={"defects": [], "overall_score": 5.0, "analysis_summary": ""},
+                field_defaults={"defects": [], "overall_score": 5.0, "analysis_summary": ""},
                 provider=provider
             )
 
@@ -171,11 +196,18 @@ class BaseAgent(ABC):
             if "overall_score" not in parsed:
                 self.logger.warning(f"{self.name}: LLM response missing 'overall_score' field")
                 parsed["overall_score"] = 5.0
+            elif parsed.get("overall_score") is None:
+                self.logger.warning(f"{self.name}: LLM response returned null overall_score")
+                parsed["overall_score"] = 5.0
 
             # Enrich defects with taxonomy information
             enriched_defects = []
             for defect in parsed.get("defects", []):
                 try:
+                    if not isinstance(defect, dict):
+                        self.logger.warning(f"{self.name}: Defect payload was {type(defect).__name__}, skipping")
+                        continue
+
                     defect_id = defect.get("id")
                     if not defect_id:
                         self.logger.warning(f"{self.name}: Defect missing ID, skipping")
@@ -191,10 +223,10 @@ class BaseAgent(ABC):
                             "name": defect_def.name,
                             "category": defect_def.category.value,
                             "severity": defect_def.severity.value,
-                            "confidence": defect.get("confidence", 0.7),
+                            "confidence": _coerce_float(defect.get("confidence", 0.7), 0.7),
                             "description": defect_def.description,
-                            "evidence": defect.get("evidence", ""),
-                            "explanation": defect.get("explanation", ""),
+                            "evidence": _stringify_field(defect.get("evidence", "")),
+                            "explanation": _stringify_field(defect.get("explanation", "")),
                             "remediation": defect_def.remediation
                         })
                     else:
@@ -223,9 +255,9 @@ class BaseAgent(ABC):
                 "agent": self.name,
                 "focus_area": self.focus_area,
                 "defects": enriched_defects,
-                "score": float(parsed.get("overall_score", 5.0)),
+                "score": _coerce_float(parsed.get("overall_score", 5.0), 5.0),
                 "confidence": overall_confidence,
-                "summary": parsed.get("analysis_summary", f"{self.name} analysis complete"),
+                "summary": _stringify_field(parsed.get("analysis_summary", f"{self.name} analysis complete")),
                 "metadata": result["metadata"]
             }
 

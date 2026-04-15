@@ -56,7 +56,12 @@ def extract_json_from_markdown(text: str) -> str:
             logger.debug("Extracted JSON from generic ``` fence")
             return content
 
-    # Pattern 4: Look for JSON object/array anywhere in text
+    # Pattern 4: extract the first balanced JSON object/array anywhere in text
+    balanced = _extract_balanced_json(text)
+    if balanced:
+        return balanced
+
+    # Pattern 5: Look for JSON object/array anywhere in text
     json_start = -1
     for i, char in enumerate(text):
         if char in ['{', '[']:
@@ -76,6 +81,82 @@ def extract_json_from_markdown(text: str) -> str:
             pass
 
     return text.strip()
+
+
+def _extract_balanced_json(text: str) -> Optional[str]:
+    """Extract first balanced JSON object/array, tolerating wrapper text."""
+    start = None
+    opening = None
+    for i, char in enumerate(text):
+        if char in "{[":
+            start = i
+            opening = char
+            break
+    if start is None:
+        return None
+
+    closing = "}" if opening == "{" else "]"
+    depth = 0
+    in_string = False
+    escape = False
+
+    for i in range(start, len(text)):
+        char = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == opening:
+            depth += 1
+        elif char == closing:
+            depth -= 1
+            if depth == 0:
+                candidate = text[start:i + 1].strip()
+                try:
+                    json.loads(candidate)
+                    return candidate
+                except json.JSONDecodeError:
+                    return candidate
+    return None
+
+
+def _attempt_parse_json_string_candidate(text: str) -> Optional[Any]:
+    """Try to unwrap JSON that was returned as an escaped string literal."""
+    candidate = text.strip()
+    if not candidate:
+        return None
+
+    parse_attempts = [candidate]
+
+    # Common Gemini/OpenAI failure mode: a JSON object serialized as a string.
+    if "\\n" in candidate or '\\"' in candidate:
+        parse_attempts.append(candidate.encode("utf-8").decode("unicode_escape"))
+
+    for attempt in parse_attempts:
+        try:
+            result = json.loads(attempt)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            continue
+
+        # If the outer layer is a string containing JSON, parse one level deeper.
+        if isinstance(result, str):
+            inner = result.strip()
+            if inner.startswith(("{", "[")):
+                try:
+                    return json.loads(inner)
+                except json.JSONDecodeError:
+                    continue
+        else:
+            return result
+
+    return None
 
 
 def safe_json_parse(
@@ -101,7 +182,13 @@ def safe_json_parse(
     # Step 1: Try extracting from markdown if enabled
     if extract_from_markdown:
         text = extract_json_from_markdown(text)
-    
+
+    # Step 1.5: Try unwrapping JSON escaped as a string literal/template
+    string_candidate = _attempt_parse_json_string_candidate(text)
+    if string_candidate is not None:
+        logger.debug("Successfully parsed JSON after unwrapping escaped string content")
+        return string_candidate
+
     # Step 2: Direct parse attempt
     try:
         result = json.loads(text)
@@ -115,7 +202,11 @@ def safe_json_parse(
     
     # Remove trailing commas (common LLM error)
     cleaned_text = re.sub(r',\s*([}\]])', r'\1', cleaned_text)
-    
+
+    # Remove stray scalar junk inserted between fields, e.g. `"field": "x",2222 "next": ...`
+    cleaned_text = re.sub(r',\s*-?\d+(?:\.\d+)?\s*(?=")', ',', cleaned_text)
+    cleaned_text = re.sub(r',\s*(?:true|false|null)\s*(?=")', ',', cleaned_text, flags=re.IGNORECASE)
+
     # Remove comments (not valid JSON but LLMs sometimes add them)
     cleaned_text = re.sub(r'//.*?\n', '\n', cleaned_text)
     cleaned_text = re.sub(r'/\*.*?\*/', '', cleaned_text, flags=re.DOTALL)

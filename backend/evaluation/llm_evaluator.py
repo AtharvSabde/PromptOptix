@@ -8,6 +8,7 @@ from typing import Dict, List, Any, Optional
 
 from ..utils import get_logger
 from ..services.llm_service import get_llm_service
+from ..config import Config
 
 logger = get_logger(__name__)
 
@@ -30,6 +31,8 @@ class LLMEvaluator:
     def __init__(self):
         """Initialize the LLM evaluator"""
         self.llm_service = get_llm_service()
+        self.judge_provider = Config.JUDGE_PROVIDER
+        self.judge_model = Config.JUDGE_MODEL
         self.dimensions = [
             {
                 "name": "relevance",
@@ -57,7 +60,13 @@ class LLMEvaluator:
                 "criteria": "Score 1-10: 1=not useful, 5=somewhat useful, 10=extremely helpful"
             }
         ]
-        logger.info("LLMEvaluator initialized with G-EVAL style evaluation")
+        logger.info(
+            "LLMEvaluator initialized with G-EVAL style evaluation",
+            extra={
+                "judge_provider": self.judge_provider,
+                "judge_model": self.judge_model
+            }
+        )
 
     async def evaluate_output(
         self,
@@ -89,23 +98,23 @@ class LLMEvaluator:
             result = self.llm_service.call_with_json_response(
                 prompt=evaluation_prompt,
                 system_prompt=self._get_evaluator_system_prompt(),
-                required_fields=["scores", "overall_score", "explanation", "strengths", "weaknesses"]
+                required_fields=["scores", "overall_score", "explanation", "strengths", "weaknesses"],
+                provider=self.judge_provider,
+                model=self.judge_model
             )
 
-            if result["success"]:
-                parsed = result["parsed_response"]
-                return {
-                    "success": True,
-                    "scores": parsed.get("scores", {}),
-                    "overall_score": parsed.get("overall_score", 5.0),
-                    "explanation": parsed.get("explanation", ""),
-                    "strengths": parsed.get("strengths", []),
-                    "weaknesses": parsed.get("weaknesses", []),
-                    "evaluation_type": "g_eval"
-                }
-            else:
-                logger.warning(f"LLM evaluation failed: {result.get('error')}")
-                return self._default_evaluation()
+            parsed = result["parsed_response"]
+            return {
+                "success": True,
+                "scores": parsed.get("scores", {}),
+                "overall_score": parsed.get("overall_score", 5.0),
+                "explanation": parsed.get("explanation", ""),
+                "strengths": parsed.get("strengths", []),
+                "weaknesses": parsed.get("weaknesses", []),
+                "evaluation_type": "g_eval",
+                "judge_provider": result["metadata"].get("provider"),
+                "judge_model": result["metadata"].get("model")
+            }
 
         except Exception as e:
             logger.error(f"LLM evaluation error: {e}")
@@ -228,25 +237,26 @@ Respond ONLY with the JSON object."""
             result = self.llm_service.call_with_json_response(
                 prompt=comparison_prompt,
                 system_prompt="You are an expert evaluator comparing AI outputs. Be objective and fair.",
-                required_fields=["winner", "confidence", "reasoning", "a_strengths", "b_strengths"]
+                required_fields=["winner", "confidence", "reasoning", "a_strengths", "b_strengths"],
+                provider=self.judge_provider,
+                model=self.judge_model
             )
 
-            if result["success"]:
-                parsed = result["parsed_response"]
-                winner = parsed.get("winner", "tie")
+            parsed = result["parsed_response"]
+            winner = parsed.get("winner", "tie")
 
-                return {
-                    "success": True,
-                    "winner": winner,
-                    "winner_label": "original" if winner == "A" else "optimized" if winner == "B" else "tie",
-                    "confidence": parsed.get("confidence", 0.5),
-                    "reasoning": parsed.get("reasoning", ""),
-                    "original_strengths": parsed.get("a_strengths", []),
-                    "optimized_strengths": parsed.get("b_strengths", []),
-                    "comparison_type": "pairwise"
-                }
-            else:
-                return self._default_comparison()
+            return {
+                "success": True,
+                "winner": winner,
+                "winner_label": "original" if winner == "A" else "optimized" if winner == "B" else "tie",
+                "confidence": parsed.get("confidence", 0.5),
+                "reasoning": parsed.get("reasoning", ""),
+                "original_strengths": parsed.get("a_strengths", []),
+                "optimized_strengths": parsed.get("b_strengths", []),
+                "comparison_type": "pairwise",
+                "judge_provider": result["metadata"].get("provider"),
+                "judge_model": result["metadata"].get("model")
+            }
 
         except Exception as e:
             logger.error(f"LLM comparison error: {e}")
@@ -358,28 +368,22 @@ Respond ONLY with the JSON object."""
             result = self.llm_service.call_with_json_response(
                 prompt=evaluation_prompt,
                 system_prompt="You are an expert prompt engineer evaluating prompt quality.",
-                required_fields=["scores", "overall_score", "quick_assessment"]
+                required_fields=["scores", "overall_score", "quick_assessment"],
+                provider=self.judge_provider,
+                model=self.judge_model
             )
 
-            if result["success"]:
-                parsed = result["parsed_response"]
-                return {
-                    "success": True,
-                    "scores": parsed.get("scores", {}),
-                    "overall_score": parsed.get("overall_score", 5.0),
-                    "quick_assessment": parsed.get("quick_assessment", ""),
-                    "improvement_suggestions": parsed.get("improvement_suggestions", []),
-                    "evaluation_type": "prompt_quality"
-                }
-            else:
-                return {
-                    "success": False,
-                    "scores": {},
-                    "overall_score": 5.0,
-                    "quick_assessment": "Unable to evaluate prompt",
-                    "improvement_suggestions": [],
-                    "evaluation_type": "default"
-                }
+            parsed = result["parsed_response"]
+            return {
+                "success": True,
+                "scores": parsed.get("scores", {}),
+                "overall_score": parsed.get("overall_score", 5.0),
+                "quick_assessment": parsed.get("quick_assessment", ""),
+                "improvement_suggestions": parsed.get("improvement_suggestions", []),
+                "evaluation_type": "prompt_quality",
+                "judge_provider": result["metadata"].get("provider"),
+                "judge_model": result["metadata"].get("model")
+            }
 
         except Exception as e:
             logger.error(f"Prompt quality evaluation error: {e}")

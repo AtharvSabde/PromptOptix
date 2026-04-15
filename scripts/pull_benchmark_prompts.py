@@ -18,6 +18,8 @@ import hashlib
 from pathlib import Path
 from datasets import load_dataset
 
+from backend.evaluation.benchmark_registry import annotate_prompt_records
+
 random.seed(42)
 
 # ---------------------------------------------------------------------------
@@ -450,8 +452,13 @@ for category, target_count in TARGET_DISTRIBUTION.items():
             "difficulty": estimate_difficulty(text),
             "source": p["source"],
             "source_id": p["source_id"],
+            "benchmark_split": "public_test",
+            "benchmark_bucket": "defect_taxonomy" if estimate_defects(text) else "real_user",
+            "benchmark_tags": [cat, p["source"]],
         })
         prompt_id += 1
+
+final_prompts = annotate_prompt_records(final_prompts)
 
 # ---------------------------------------------------------------------------
 # Save

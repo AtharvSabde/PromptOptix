@@ -1,5 +1,5 @@
 """
-PromptOptimizer Pro - FastAPI Application
+PromptOptix - FastAPI Application
 
 Main API application with routes for:
 - POST /api/analyze - Analyze prompts for defects
@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown events"""
     # Startup
-    logger.info("Starting PromptOptimizer Pro API")
+    logger.info("Starting PromptOptix API")
     logger.info(f"Debug mode: {Config.DEBUG}")
     logger.info(f"Environment: {Config.APP_ENV}")
 
@@ -42,12 +42,12 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    logger.info("Shutting down PromptOptimizer Pro API")
+    logger.info("Shutting down PromptOptix API")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="PromptOptimizer Pro",
+    title="PromptOptix",
     description="""
     Multi-Agent Prompt Engineering System
 
@@ -102,7 +102,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "PromptOptimizer Pro",
+        "name": "PromptOptix",
         "version": "2.0.0",
         "description": "Multi-Agent Prompt Engineering System with DGEO, SHDT & CDRAF",
         "endpoints": {
